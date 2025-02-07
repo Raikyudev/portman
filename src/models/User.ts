@@ -11,6 +11,7 @@ export interface IUser extends Document{
     email: string;
     password: string;
     preferences: IUserPreferences;
+    created_at: Date;
 }
 
 const userSchema:Schema = new mongoose.Schema({
@@ -36,6 +37,10 @@ const userSchema:Schema = new mongoose.Schema({
     },
     preferences:{
         currency: { type: String, required: true, default: 'GBP' }
+    },
+    created_at:{
+        type: Date,
+        default: Date.now,
     }
 });
 
