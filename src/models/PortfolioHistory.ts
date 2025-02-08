@@ -1,6 +1,7 @@
 import mongoose, {Document, Schema} from 'mongoose';
 
 export interface IPortfolioHistory extends Document{
+    _id: Schema.Types.ObjectId;
     portfolio_id: Schema.Types.ObjectId;
     port_history_date: Date;
     port_total_value: number;

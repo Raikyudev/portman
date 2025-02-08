@@ -1,6 +1,7 @@
 import mongoose, {Document, Schema} from 'mongoose';
 
 export interface IPortfolioAsset extends Document{
+    _id: Schema.Types.ObjectId;
     portfolio_id: Schema.Types.ObjectId;
     asset_id: Schema.Types.ObjectId;
     quantity: number;

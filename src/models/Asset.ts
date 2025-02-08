@@ -2,6 +2,7 @@ import mongoose, {Document, Schema} from 'mongoose';
 
 
 export interface IAsset extends Document{
+    _id: Schema.Types.ObjectId;
     symbol: string;
     name: string;
     asset_type: string;
@@ -32,6 +33,6 @@ const assetSchema:Schema = new mongoose.Schema({
     }
 })
 
-const Asset = mongoose.model<IAsset>('Asset',assetSchema);
+const Asset = mongoose.models.Asset || mongoose.model<IAsset>('Asset',assetSchema);
 
 export default Asset;

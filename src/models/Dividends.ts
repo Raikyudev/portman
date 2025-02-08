@@ -2,6 +2,7 @@ import mongoose, {Schema, Document} from 'mongoose';
 
 
 export interface IDividend extends Document {
+    _id: Schema.Types.ObjectId;
     portfolio_id: mongoose.Types.ObjectId;
     asset_id: mongoose.Types.ObjectId;
     amount: number;

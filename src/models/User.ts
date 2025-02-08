@@ -5,6 +5,7 @@ interface IUserPreferences{
     currency: string;
 }
 export interface IUser extends Document{
+    _id: Schema.Types.ObjectId;
     username: string;
     first_name: string;
     last_name: string;

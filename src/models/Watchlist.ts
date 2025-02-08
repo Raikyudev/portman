@@ -1,6 +1,7 @@
 import mongoose, {Document, Schema} from 'mongoose';
 
 export interface IWatchlist extends Document{
+    _id: Schema.Types.ObjectId;
     user_id: Schema.Types.ObjectId;
     asset_id: Schema.Types.ObjectId;
     added_at: Date;
