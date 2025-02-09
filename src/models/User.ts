@@ -18,6 +18,7 @@ export interface IUser extends Document{
 const userSchema:Schema = new mongoose.Schema({
     username:{
         type: String,
+        unique: true,
         required: true,
     },
     first_name:{
@@ -30,6 +31,7 @@ const userSchema:Schema = new mongoose.Schema({
     },
     email:{
         type: String,
+        unique: true,
         required: true,
     },
     password:{
@@ -45,6 +47,6 @@ const userSchema:Schema = new mongoose.Schema({
     }
 });
 
-const User = mongoose.model<IUser>('User', userSchema);
+const User = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
 
 export default User;

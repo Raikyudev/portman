@@ -41,6 +41,6 @@ const DividendSchema: Schema = new Schema({
 });
 
 
-export const Dividends = mongoose.model<IDividend>('Dividend', DividendSchema);
+export const Dividends = mongoose.models.Dividends || mongoose.model<IDividend>('Dividend', DividendSchema);
 
 export default Dividends;

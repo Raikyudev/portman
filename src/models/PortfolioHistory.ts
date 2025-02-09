@@ -27,7 +27,7 @@ const PortfolioHistorySchema = new Schema<IPortfolioHistory>({
         required: true
     }
 });
-export const PortfolioHistory = mongoose.model<IPortfolioHistory>('PortfolioHistory', PortfolioHistorySchema);
+export const PortfolioHistory = mongoose.models.PortfolioHistory || mongoose.model<IPortfolioHistory>('PortfolioHistory', PortfolioHistorySchema);
 
 export default PortfolioHistory;
 

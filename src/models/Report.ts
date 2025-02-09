@@ -35,6 +35,6 @@ const reportSchema:Schema = new mongoose.Schema({
     }
 })
 
-const Report = mongoose.model<IReport>('Report',reportSchema);
+const Report = mongoose.models.Report || mongoose.model<IReport>('Report',reportSchema);
 
 export default Report;

@@ -7,18 +7,24 @@ export async function POST( request: Request) {
     await dbConnect();
 
     try{
-        const { username, first_name, last_name, email, password } = await request.json();
-
-        const foundUser = await User.findOne({ email });
+        const requestBody = await request.json();
+        const { first_name, last_name, username, email, password } = requestBody;
+        console.log("Request Body:", requestBody);
+        const foundUser = await User.findOne({
+            $or: [{email}, {username}],
+        });
         if (foundUser) {
-            return NextResponse.json({
-                error: "User already exists"
-            },{status: 400});
+            if (foundUser.email === email) {
+                return NextResponse.json({ error: "Email already registered" }, { status: 400 });
+            }
+            if (foundUser.username === username) {
+                return NextResponse.json({ error: "Username already taken" }, { status: 400 });
+            }
         }
 
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        const newUser = await User.create({
+        await User.create({
             username,
             first_name,
             last_name,
@@ -29,9 +35,18 @@ export async function POST( request: Request) {
         });
 
         return NextResponse.json({
-            user: newUser
-        }, {status: 201});
+            message: "User registered successfully"
+        }, {
+            status: 201
+        });
     } catch (error) {
+        if((error as { code?: number }).code === 11000) {
+            return NextResponse.json({
+                error: "Duplicate entry."
+            }, {
+                status: 400
+            });
+        }
         return NextResponse.json({
             error: "Error occurred: " + error
         }, {status: 500});

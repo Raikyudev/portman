@@ -32,6 +32,6 @@ const portfolioSchema:Schema = new mongoose.Schema({
     }
 })
 
-const Portfolio = mongoose.model<IPortfolio>('Portfolio',portfolioSchema);
+const Portfolio = mongoose.models.Portfolio || mongoose.model<IPortfolio>('Portfolio',portfolioSchema);
 
 export default Portfolio;

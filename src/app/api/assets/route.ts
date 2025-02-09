@@ -9,8 +9,8 @@ export async function GET() {
         const assets = await Asset.find({});
         console.log("Assets Found:", assets.length);
         return NextResponse.json(assets)
-    } catch (error: any) {
-        return NextResponse.json({error: error.message})
+    } catch (error) {
+        return NextResponse.json({error: (error instanceof Error) ? error.message : "An unknown error occurred"})
     }
 }
 

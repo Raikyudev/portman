@@ -24,7 +24,7 @@ const WatchlistSchema = new Schema({
     }
 });
 
-export const Watchlist = mongoose.model<IWatchlist>('Watchlist', WatchlistSchema);
+export const Watchlist = mongoose.models.Watchlist || mongoose.model<IWatchlist>('Watchlist', WatchlistSchema);
 
 export default Watchlist;
 
