@@ -1,8 +1,9 @@
 import  {AuthOptions} from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import dbConnect from "@/lib/mongodb";
+import { dbConnect } from "@/lib/mongodb";
 import User from "@/models/User";
+
 
 
 
@@ -15,9 +16,9 @@ export const authOptions: AuthOptions= {
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                email: {
-                    label: "Email",
-                    type: "email"
+                username: {
+                    label: "Username",
+                    type: "text"
                 },
                 password: {
                     label: "Password",
@@ -25,14 +26,15 @@ export const authOptions: AuthOptions= {
                 },
             },
             async authorize(credentials) {
-                if (!credentials || !credentials.email || !credentials.password) {
+                console.log(credentials)
+                if (!credentials || !credentials.username || !credentials.password) {
                     throw new Error("Missing credentials");
                 }
 
                 await dbConnect();
 
                 const user = await User.findOne({
-                    email: credentials.email
+                    username: credentials.username
                 });
 
                 if (!user){
@@ -47,9 +49,13 @@ export const authOptions: AuthOptions= {
 
                 return {
                     id: user._id.toString(),
+                    username: user.username,
                     email: user.email,
-                    name: user.username
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    preferences: user.preferences
                 }
+
 
 
             }

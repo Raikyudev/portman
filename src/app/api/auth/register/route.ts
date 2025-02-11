@@ -1,4 +1,4 @@
-import dbConnect from "@/lib/mongodb";
+import { dbConnect } from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -9,7 +9,6 @@ export async function POST( request: Request) {
     try{
         const requestBody = await request.json();
         const { first_name, last_name, username, email, password } = requestBody;
-        console.log("Request Body:", requestBody);
         const foundUser = await User.findOne({
             $or: [{email}, {username}],
         });
@@ -22,9 +21,9 @@ export async function POST( request: Request) {
             }
         }
 
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        await User.create({
+        const newUser = await User.create({
             username,
             first_name,
             last_name,
@@ -35,7 +34,13 @@ export async function POST( request: Request) {
         });
 
         return NextResponse.json({
-            message: "User registered successfully"
+            message: "User registered successfully",
+            user: {
+                username: newUser.username,
+                first_name: newUser.first_name,
+                last_name: newUser.last_name,
+                email: newUser.email
+            },
         }, {
             status: 201
         });

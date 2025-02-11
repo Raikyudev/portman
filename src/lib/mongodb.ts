@@ -1,30 +1,56 @@
 import mongoose from 'mongoose';
+import { MongoMemoryServer } from "mongodb-memory-server";
 
-const MONGODB_URI: string = process.env.MONGODB_URI || '';
-
-if (!MONGODB_URI) {
-    throw new Error('Please define the MONGO_URI environment variable');
-}
-
-const connection: { isConnected?: number } = {};
+const connection: { isConnected?: number; mongoServer?: MongoMemoryServer } = {};
 
 async function dbConnect(): Promise<void> {
     if (connection.isConnected) {
         console.log("Already connected to MongoDB");
         return;
     }
-    try{
-        const db = await mongoose.connect(MONGODB_URI, {
+
+    if (process.env.NODE_ENV === 'test') {
+
+        console.log("Using in-memory database");
+        connection.mongoServer = await MongoMemoryServer.create();
+        const uri = connection.mongoServer.getUri();
+
+        const db = await mongoose.connect(uri, {
             dbName: 'portman',
         });
-        connection.isConnected = db.connections[0].readyState;
-        console.log("Using Database:", mongoose.connection.name);
-    } catch (error) {
-        console.error("MongoDB connection error:", error);
-    }
 
+        connection.isConnected = db.connections[0].readyState
+    } else{
+        const MONGODB_URI: string = process.env.MONGODB_URI || '';
+
+        if (!MONGODB_URI) {
+            throw new Error('No MongoDB URI provided.');
+        }
+
+        try {
+            const db = await mongoose.connect(MONGODB_URI, {
+                dbName: 'portman',
+            });
+            connection.isConnected = db.connections[0].readyState;
+            console.log("Using Database:", mongoose.connection.name);
+        } catch (error) {
+            console.error("MongoDB connection error:", error);
+        }
+    }
 
 
 }
 
-export default dbConnect;
+async function closeDatabase(): Promise<void> {
+    if (process.env.NODE_ENV === "test" && connection.mongoServer) {
+        await mongoose.connection.dropDatabase();
+        await mongoose.connection.close();
+        await connection.mongoServer.stop();
+        console.log("Closed In-memory mongo database");
+    }
+}
+
+
+
+
+export { dbConnect, closeDatabase };
