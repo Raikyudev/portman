@@ -47,6 +47,15 @@ async function closeDatabase(): Promise<void> {
         await mongoose.connection.close();
         await connection.mongoServer.stop();
         console.log("Closed In-memory mongo database");
+    } else{
+        try {
+            if (mongoose.connection.readyState !== 0) {
+                await mongoose.connection.close();
+                console.log("Closed MongoDB connection");
+            }
+        } catch (error) {
+            console.error("Error closing MongoDB connection:", error);
+        }
     }
 }
 

@@ -8,6 +8,7 @@ export interface IAsset extends Document{
     asset_type: string;
     price: number;
     currency: string;
+    market: string;
 }
 
 const assetSchema:Schema = new mongoose.Schema({
@@ -28,6 +29,10 @@ const assetSchema:Schema = new mongoose.Schema({
         default: 0.0
     },
     currency:{
+        type: String,
+        required: true,
+    },
+    market:{
         type: String,
         required: true,
     }
