@@ -61,7 +61,13 @@ export default function Page() {
                 <ul>
                     {portfolios.map((portfolio : IPortfolio) => (
                         <li key={portfolio._id.toString()}>
-                            <strong>{portfolio.name}</strong> { portfolio.description ?  " - " + portfolio.description : ""}
+                            <strong>{portfolio.name}</strong>
+                            { portfolio.description ?  " - " + portfolio.description : ""}
+                            <div>
+                                <button onClick={() => router.push(`/portfolio/${portfolio._id.toString()}/add-transaction`)}>
+                                    Add Transaction
+                                </button>
+                            </div>
                         </li>
                     ))}
                 </ul>

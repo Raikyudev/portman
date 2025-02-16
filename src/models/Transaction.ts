@@ -1,46 +1,49 @@
 import mongoose, {Document, Schema} from 'mongoose';
 
-export interface IPortfolioAsset extends Document{
+export interface ITransaction extends Document{
     _id: Schema.Types.ObjectId;
     portfolio_id: Schema.Types.ObjectId;
     asset_id: Schema.Types.ObjectId;
+    tx_type: string;
     quantity: number;
-    avg_buy_price: number;
+    price_per_unit: number;
     currency: string;
-    created_at: Date;
+    tx_date: Date;
 }
 
-
-export const PortfolioAssetSchema = new Schema<IPortfolioAsset>({
-    portfolio_id: {
+export const TransactionSchema = new Schema<ITransaction>({
+    portfolio_id:{
         type: Schema.Types.ObjectId,
         required: true,
         ref: 'Portfolio'
     },
-    asset_id: {
+    asset_id:{
         type: Schema.Types.ObjectId,
         required: true,
         ref: 'Asset'
+    },
+    tx_type: {
+        type: String,
+        required: true
     },
     quantity: {
         type: Number,
         required: true
     },
-    avg_buy_price: {
+    price_per_unit: {
         type: Number,
         required: true
     },
-    currency:{
+    currency: {
         type: String,
-        required: true,
-        default: "USD"
+        required: true
     },
-    created_at: {
+    tx_date: {
         type: Date,
         default: Date.now
     }
 });
 
-export const PortfolioAsset = mongoose.models.PortfolioAsset || mongoose.model<IPortfolioAsset>('PortfolioAsset', PortfolioAssetSchema);
+export const Transaction = mongoose.models.Transaction || mongoose.model<ITransaction>('Transaction', TransactionSchema);
 
-export default PortfolioAsset;
+export default Transaction;
