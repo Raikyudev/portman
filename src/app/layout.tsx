@@ -30,6 +30,10 @@ export default async function RootLayout({
 
     return (
       <html lang="en">
+      <head>
+          <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css"></link>
+          <title>Portman</title>
+      </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >

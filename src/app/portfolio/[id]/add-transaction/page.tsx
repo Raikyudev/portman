@@ -88,7 +88,7 @@ export default function Page()
         handleSubmit,
         formState: { errors, isSubmitting },
         reset,
-
+        setValue,
     } = useForm<TransactionFormData>({
        resolver: zodResolver(transactionSchema),
     });
@@ -140,6 +140,9 @@ export default function Page()
         }
     };
 
+    console.log(errors)
+    console.log(selectedAsset)
+
     if (status === "loading" || isPortfolioOwner === null) return <p>Loading...</p>;
 
     return (
@@ -164,6 +167,7 @@ export default function Page()
                                         setSelectedAsset(asset);
                                         setSearchQuery(asset.symbol);
                                         setSearchResults([]);//Hide the results after selection
+                                        setValue("asset_id", asset._id)
                                     }}
                                     style={{ cursor: "pointer"}}
                                 >
@@ -173,7 +177,6 @@ export default function Page()
                         </ul>
                     )}
                 </div>
-                <input type="hidden" {...register("asset_id")} value={selectedAsset?._id || ""} />
                 {selectedAsset && (
                     <p>
                         <strong>Selected Stock: </strong> {selectedAsset.symbol} - {selectedAsset.name}
@@ -185,7 +188,7 @@ export default function Page()
                     <select
                         {...register("tx_type")}
                     >
-                        <option value="buy" selected>Buy</option>
+                        <option value="buy" >Buy</option>
                         <option value="sell">Sell</option>
                     </select>
                 </div>
