@@ -1,9 +1,10 @@
 import mongoose, {Document, Schema} from 'mongoose';
+import {IAsset} from "@/models/Asset";
 
 export interface IPortfolioAsset extends Document{
     _id: Schema.Types.ObjectId;
     portfolio_id: Schema.Types.ObjectId;
-    asset_id: Schema.Types.ObjectId;
+    asset_id: Schema.Types.ObjectId | IAsset;
     quantity: number;
     avg_buy_price: number;
     currency: string;
@@ -24,11 +25,13 @@ export const PortfolioAssetSchema = new Schema<IPortfolioAsset>({
     },
     quantity: {
         type: Number,
-        required: true
+        required: true,
+        min: 0,
     },
     avg_buy_price: {
         type: Number,
-        required: true
+        required: true,
+        mind: 0,
     },
     currency:{
         type: String,
@@ -40,6 +43,9 @@ export const PortfolioAssetSchema = new Schema<IPortfolioAsset>({
         default: Date.now
     }
 });
+
+
+PortfolioAssetSchema.index({ portfolio_id: 1, asset_id: 1 }, { unique: true });
 
 export const PortfolioAsset = mongoose.models.PortfolioAsset || mongoose.model<IPortfolioAsset>('PortfolioAsset', PortfolioAssetSchema);
 

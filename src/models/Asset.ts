@@ -14,6 +14,7 @@ export interface IAsset extends Document{
 const assetSchema:Schema = new mongoose.Schema({
     symbol:{
         type: String,
+        unique: true,
         required: true,
     },
     name:{
