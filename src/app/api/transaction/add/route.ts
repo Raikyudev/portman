@@ -6,6 +6,7 @@ import Transaction from "@/models/Transaction";
 import Asset from "@/models/Asset";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import PortfolioAsset from "@/models/PortfolioAsset";
 
 const transactionSchema = z.object({
     portfolio_id: z.string(),
@@ -14,7 +15,7 @@ const transactionSchema = z.object({
     quantity: z.number().positive(),
     price_per_unit: z.number().positive(),
     currency: z.string(),
-    date: z.string(),
+    tx_date: z.string(),
 });
 
 export async function POST(request: Request) {
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
     const result = transactionSchema.safeParse(body);
 
     if(!result.success) {
-        return NextResponse.json({error: result.error.format()}, {status: 400});
+        console.log("Validation Error: ", result.error.format());
+        return NextResponse.json({ error: result.error.format() }, { status: 400 });
     }
 
     await dbConnect();
@@ -47,6 +49,50 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Asset not found"}, { status: 404 });
     }
 
+    const existingPortfolioAsset = await PortfolioAsset.findOne({
+        portfolio_id: result.data.portfolio_id,
+        asset_id: result.data.asset_id,
+    });
+
+    if(result.data.tx_type === "buy") {
+        if(existingPortfolioAsset) {
+            const totalOldValue = existingPortfolioAsset.quantity * existingPortfolioAsset.avg_buy_price;
+            const totalNewValue = result.data.quantity * result.data.price_per_unit;
+            const totalQuantity = existingPortfolioAsset.quantity + result.data.quantity;
+
+            existingPortfolioAsset.avg_buy_price = (totalOldValue + totalNewValue) / totalQuantity;
+            existingPortfolioAsset.quantity = totalQuantity;
+
+            await existingPortfolioAsset.save();
+        } else {
+            const newPortfolioAsset = new PortfolioAsset({
+                portfolio_id: result.data.portfolio_id,
+                asset_id: result.data.asset_id,
+                quantity: result.data.quantity,
+                avg_buy_price: result.data.price_per_unit,
+                currency: result.data.currency,
+                created_at : new Date(),
+            });
+
+            await newPortfolioAsset.save();
+        }
+    }else if (result.data.tx_type === "sell"){
+        if (!existingPortfolioAsset || existingPortfolioAsset.quantity < result.data.quantity) {
+            return NextResponse.json({ error: "Not enough shares to sell" }, { status: 400 });
+        }
+
+        existingPortfolioAsset.quantity -= result.data.quantity;
+
+        if(existingPortfolioAsset.quantity === 0){
+            await existingPortfolioAsset.deleteOne({ _id: existingPortfolioAsset._id})
+        } else {
+            await existingPortfolioAsset.save();
+        }
+    } else {
+        return NextResponse.json({ error: "Invalid transaction type" }, { status: 400 });
+    }
+
+
     const transaction = new Transaction({
         portfolio_id: result.data.portfolio_id,
         asset_id: result.data.asset_id,
@@ -54,7 +100,7 @@ export async function POST(request: Request) {
         quantity: result.data.quantity,
         price_per_unit: result.data.price_per_unit,
         currency: result.data.currency,
-        tx_date: result.data.date,
+        tx_date: result.data.tx_date,
     });
 
     await transaction.save();

@@ -13,7 +13,7 @@ const transactionSchema = z.object({
     quantity: z.number().positive("Please enter a valid number"),
     price_per_unit: z.number().positive("Please enter a valid number"),
     currency: z.string().min(1, "Please select a currency"),
-    date: z.string(),
+    tx_date: z.string(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -91,6 +91,9 @@ export default function Page()
         setValue,
     } = useForm<TransactionFormData>({
        resolver: zodResolver(transactionSchema),
+        defaultValues: {
+            tx_date: new Date().toISOString().split("T")[0]
+        },
     });
 
     useEffect(() => {
@@ -103,7 +106,7 @@ export default function Page()
     }, [selectedAsset, reset]);
 
     const onSubmit = async (data: TransactionFormData) => {
-
+        console.log("Data: " + data);
         if (!selectedAsset || !selectedAsset._id) {
             setError("Please select an asset");
             return;
@@ -221,7 +224,11 @@ export default function Page()
 
                 <div>
                     <label>Date</label>
-                    <input type="date" {...register("date")} />
+                    <input
+                        type="date"
+                        {...register("tx_date")}
+                        onChange={(e) => setValue("tx_date", e.target.value)}
+                    />
                 </div>
 
                 {errors && <p className="text-red-500">{error}</p>}
