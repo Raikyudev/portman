@@ -1,10 +1,10 @@
 import mongoose, {Document, Schema} from 'mongoose';
-import {IAsset} from "@/models/Asset";
+
 
 export interface IPortfolioAsset extends Document{
     _id: Schema.Types.ObjectId;
     portfolio_id: Schema.Types.ObjectId;
-    asset_id: Schema.Types.ObjectId | IAsset;
+    asset_id: Schema.Types.ObjectId;
     quantity: number;
     avg_buy_price: number;
     currency: string;

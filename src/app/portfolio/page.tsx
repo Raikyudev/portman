@@ -6,10 +6,13 @@ import { IPortfolio } from "@/models/Portfolio";
 import { useSession } from "next-auth/react";
 import { IPortfolioAsset } from "@/models/PortfolioAsset";
 
+interface IExtendedPortfolioAsset extends IPortfolioAsset {
+    asset_info: { symbol: string; name: string;};
+}
 
 export default function Page() {
     const [portfolios, setPortfolios] = useState<IPortfolio[]>([]);
-    const [portfolioAssets, setPortfolioAssets] = useState<{ [key: string]: IPortfolioAsset[] }>({});
+    const [portfolioAssets, setPortfolioAssets] = useState<{ [key: string]: IExtendedPortfolioAsset[] }>({});
     const [loading, setLoading] = useState(true);
     const [expandedPortfolio, setExpandedPortfolio] = useState<string | null>(null);
     const router = useRouter();
@@ -29,7 +32,7 @@ export default function Page() {
                 console.error("Failed to fetch portfolio assets");
             }
 
-            const assets: IPortfolioAsset[] = await response.json();
+            const assets: IExtendedPortfolioAsset[] = await response.json();
             setPortfolioAssets( prevState => ({
                 ...prevState,
                 [portfolioId]: assets,
@@ -93,43 +96,69 @@ export default function Page() {
         <div>
             <h1>Hi { (session?.user as { first_name?: string })?.first_name || "User"} Your portfolios</h1>
             {portfolios.length > 0 ?  (
-                <ul>
-                    {portfolios.map((portfolio : IPortfolio) => (
-                        <li key={portfolio._id.toString()}>
-                            <strong>{portfolio.name}</strong>
-                            { portfolio.description ?  " - " + portfolio.description : ""}
-                            <div>
-                                <button onClick={() => router.push(`/portfolio/${portfolio._id.toString()}/add-transaction`)}>
-                                    Add Transaction
-                                </button>
-                            </div>
-                            {expandedPortfolio === portfolio._id.toString() && (
+                <>
+                    {portfolios.length > 1 && (
+                        <div>
+                            <label>Select Portfolio: </label>
+                            <select
+                                value={expandedPortfolio || ""}
+                                onChange={async (e) => {
+                                    const selectedPortfolio = e.target.value;
+                                    setExpandedPortfolio(selectedPortfolio);
+                                    await fetchPortfolioAssets(selectedPortfolio);
+                                }}
+                            >
+                                {!expandedPortfolio && (
+                                    <option> Select a portfolio </option>
+                                )}
+                                {portfolios.map((portfolio) => (
+                                    <option key={portfolio._id.toString()} value={portfolio._id.toString()}>
+                                        {portfolio.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <ul>
+                        {portfolios.map((portfolio : IPortfolio) => (
+                            <li key={portfolio._id.toString()}>
+                                <strong>{portfolio.name}</strong>
+                                { portfolio.description ?  " - " + portfolio.description : ""}
                                 <div>
-                                    <h3>Assets</h3>
-                                    {portfolioAssets[portfolio._id.toString()] ? (
-                                        portfolioAssets[portfolio._id.toString()].length > 0 ? (
-                                            <ul>
-                                                {portfolioAssets[portfolio._id.toString()].map((asset) => (
-                                                    <li key={asset._id.toString()}>
-                                                        <strong>{(asset.asset_id  as { symbol: string })?.symbol}</strong> - {(asset.asset_id  as { name: string })?.name} <br />
-                                                        <span>Quantity: {asset.quantity}</span> |
-                                                        <span>Avg Buy Price: {asset.avg_buy_price} ({asset.currency})</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                    ) : (
-                                        <p>No assets found in this portfolio</p>
-                                        )
-                                    ) : (
-                                        <p>Loading assets...</p>
-                                    )}
-
+                                    <button onClick={() => router.push(`/portfolio/${portfolio._id.toString()}/add-transaction`)}>
+                                        Add Transaction
+                                    </button>
                                 </div>
-                            )}
-                        </li>
+                                {expandedPortfolio === portfolio._id.toString() && (
+                                    <div>
+                                        <h3>Assets</h3>
+                                        {portfolioAssets[portfolio._id.toString()] ? (
+                                            portfolioAssets[portfolio._id.toString()].length > 0 ? (
+                                                <ul>
+                                                    {portfolioAssets[portfolio._id.toString()].map((asset) => (
+                                                        <li key={asset._id.toString()}>
+                                                            <strong>{asset.asset_info.symbol}</strong> - {asset.asset_info.name} <br />
+                                                            <span>Quantity: {asset.quantity}</span> |
+                                                            <span>Avg Buy Price: {asset.avg_buy_price} ({asset.currency})</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
 
-                    ))}
-                </ul>
+                                        ) : (
+                                            <p>No assets found in this portfolio</p>
+                                            )
+                                        ) : (
+                                            <p>Loading assets...</p>
+                                        )}
+
+                                    </div>
+                                )}
+                            </li>
+
+                        ))}
+                    </ul>
+                </>
             ) : (
                 <p>You don&#39;t have any portfolios yet.</p>
             )}
