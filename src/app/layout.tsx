@@ -4,6 +4,7 @@ import "./globals.css";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import AuthProvider from "@/components/SessionProvider";
+import Navbar from "@/components/navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,22 +26,25 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-
-    return (
-      <html lang="en">
+  return (
+    <html lang="en">
       <head>
-          <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css"></link>
-          <title>Portman</title>
+        <link
+          rel="stylesheet"
+          href="https://cdn.simplecss.org/simple.css"
+        ></link>
+        <title>Portman</title>
       </head>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <AuthProvider session={session}>
-            {children}
+          <Navbar />
+          <main>{children}</main>
         </AuthProvider>
-        </body>
-      </html>
-    );
+      </body>
+    </html>
+  );
 }
