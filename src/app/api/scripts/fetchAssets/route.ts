@@ -5,21 +5,40 @@ import CronJobTracker from "@/models/CronJobTracker";
 
 export async function GET() {
   try {
-    await fetchAssets();
-    await dbConnect();
+    const response = NextResponse.json(
+      { message: "fetchAssets started" },
+      { status: 202 },
+    );
 
-    await CronJobTracker.findOneAndUpdate(
-      { job: "fetchAssets" },
-      { lastRun: new Date() },
-      { upsert: true, new: true },
-    );
-    await closeDatabase();
-    return NextResponse.json(
-      { message: "Assets fetched successfully" },
-      { status: 200 },
-    );
+    await (async () => {
+      try {
+        await dbConnect();
+        console.log("Database connected. Fetching assets...");
+        let minute = 0;
+        const interval = setInterval(() => {
+          console.log("Still processing fetchAssets, minute: " + minute++);
+        }, 60 * 1000);
+
+        await fetchAssets();
+        console.log("fetchAssets completed successfully");
+
+        await CronJobTracker.findOneAndUpdate(
+          { job: "fetchAssets" },
+          { lastRun: new Date() },
+          { upsert: true, new: true },
+        );
+
+        await closeDatabase();
+        console.log("Database connection closed.");
+
+        clearInterval(interval);
+      } catch (error) {
+        console.error("Error in background fetchAssets execution:", error);
+      }
+    })();
+
+    return response;
   } catch (error) {
-    await closeDatabase();
     console.error("Error in API route:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
