@@ -14,9 +14,10 @@ export async function GET() {
       try {
         await dbConnect();
         console.log("Database connected. Fetching assets...");
-        let minute = 0;
+
+        // Start logging every minute
         const interval = setInterval(() => {
-          console.log("Still processing fetchAssets, minute: " + minute++);
+          console.log("Still processing fetchAssets...");
         }, 60 * 1000);
 
         await fetchAssets();
