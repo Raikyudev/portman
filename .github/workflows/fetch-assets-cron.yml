@@ -1,0 +1,13 @@
+name: Fetch Assets Cron Job
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  fetch-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Fetch Assets API to update the database with latest Asset info
+        run: curl -X GET "${{ secrets.FETCH_CRON_API_URL }}"

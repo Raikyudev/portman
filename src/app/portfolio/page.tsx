@@ -58,7 +58,7 @@ export default function Page() {
       }
     };
 
-    fetchPortfolios();
+    fetchPortfolios().then(() => {});
   }, [fetchPortfolioAssets]);
 
   if (loading) return <p>Loading...</p>;
@@ -79,7 +79,6 @@ export default function Page() {
             portfolio={portfolio}
             assets={portfolioAssets[portfolio._id.toString()] || []}
             expandedPortfolio={expandedPortfolio}
-            setExpandedPortfolio={setExpandedPortfolio}
           />
         ))}
       </ul>
