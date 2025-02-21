@@ -5,14 +5,20 @@ import CronJobTracker from "@/models/CronJobTracker";
 
 export async function GET() {
   try {
-    await fetchAssets();
-    await dbConnect();
+    fetchAssets()
+      .then(async () => {
+        await dbConnect();
+        await CronJobTracker.findOneAndUpdate(
+          { job: "fetchAssets" },
+          { lastRun: new Date() },
+          { upsert: true, new: true },
+        );
+        console.log("Assets fetched successfully");
+      })
+      .catch((error) => {
+        console.error("Error in background fetch:", error);
+      });
 
-    await CronJobTracker.findOneAndUpdate(
-      { job: "fetchAssets" },
-      { lastRun: new Date() },
-      { upsert: true, new: true },
-    );
     await closeDatabase();
     return NextResponse.json(
       { message: "Assets fetched successfully" },
