@@ -1,0 +1,15 @@
+name: Save Portfolio History
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  save-history:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send request to save portfolio history
+        run: |
+          curl -X POST "https://portman-sand.vercel.app/api/portfolio-history/save-all"
