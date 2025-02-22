@@ -20,9 +20,12 @@ export async function POST() {
     }
 
     for (const portfolio of portfolios) {
-      const portfolio_id = portfolio._id;
-
-      // Aggregate assets for the portfolio
+      const portfolio_id = portfolio._id.toString();
+      if (portfolio_id.length !== 24) {
+        console.error(`Invalid portfolio_id: ${portfolio_id}`);
+        console.log(typeof portfolio_id);
+        continue;
+      }
       const portfolioAssets = await PortfolioAsset.aggregate([
         {
           $match: {
@@ -48,6 +51,7 @@ export async function POST() {
             currency: 1,
             "asset_info.symbol": 1,
             "asset_info.name": 1,
+            "asset_info.price": 1,
           },
         },
       ]);
@@ -58,16 +62,18 @@ export async function POST() {
       }
 
       let totalValue = 0;
-      const currency = portfolioAssets[0].asset_info.currency;
-
+      const currency = portfolioAssets[0].currency;
+      console.log(portfolioAssets[0]);
       portfolioAssets.forEach(({ asset_info, quantity }) => {
+        console.log("Asset: ", asset_info.symbol, " Quantity: ", quantity, "");
         totalValue += asset_info.price * quantity;
       });
 
       const newHistory = new PortfolioHistory({
         portfolio_id,
-        portfolio_total_value: totalValue,
-        portfolio_total_value_currency: currency,
+        port_history_date: new Date(),
+        port_total_value: totalValue,
+        port_total_value_currency: currency,
       });
 
       await newHistory.save();

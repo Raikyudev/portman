@@ -42,6 +42,7 @@ export async function POST(request: Request) {
           currency: 1,
           "asset_info.symbol": 1,
           "asset_info.name": 1,
+          "asset_info.price": 1,
         },
       },
     ]);
@@ -62,8 +63,9 @@ export async function POST(request: Request) {
 
     const newHistory = new PortfolioHistory({
       portfolio_id,
-      portfolio_total_value: totalValue,
-      portfolio_total_value_currency: currency,
+      port_history_date: new Date(),
+      port_total_value: totalValue,
+      port_total_value_currency: currency,
     });
 
     await newHistory.save();

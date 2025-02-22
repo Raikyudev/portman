@@ -33,7 +33,7 @@ export default async function RootLayout({
       <head>
         <link
           rel="stylesheet"
-          href="http://cdn.simplecss.org/simple.css"
+          href="https://cdn.simplecss.org/simple.css"
         ></link>
         <title>Portman</title>
       </head>
