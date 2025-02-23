@@ -1,0 +1,34 @@
+import CurrencyRate from "@/models/CurrencyRate";
+
+export async function getExchangeRate(currency1: string, currency2?: string) {
+  const c1 = currency1.toUpperCase();
+  const c2 = currency2 ? currency2.toUpperCase() : "USD";
+
+  const rates = await CurrencyRate.find({ currency: { $in: [c1, c2] } });
+
+  if (rates.length !== (currency2 ? 2 : 1)) {
+    throw new Error("One or both currency rates not found");
+  }
+
+  const rateMap: Record<string, number> = {};
+
+  rates.forEach((rate) => {
+    rateMap[rate.currency] = rate.rate;
+  });
+
+  if (!currency2) {
+    return {
+      base: "USD",
+      currency: c1,
+      rate: rateMap[c1],
+    };
+  }
+
+  const exchangeRate = rateMap[c1] / rateMap[c2];
+
+  return {
+    base: c2,
+    currency: c1,
+    rate: exchangeRate,
+  };
+}

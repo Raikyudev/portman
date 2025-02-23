@@ -1,0 +1,15 @@
+name: Update Currency Exchange Rates
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  update-currency-rates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send request to update currency rates
+        run: |
+          curl -X POST "https://portman-sand.vercel.app/api/currency/update"
