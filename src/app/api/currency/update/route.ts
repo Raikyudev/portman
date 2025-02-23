@@ -26,6 +26,10 @@ export async function POST() {
         );
       }
     }
+    return NextResponse.json(
+      { message: "Exchange rates updated" },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error updating exchange rates:" + error);
     return NextResponse.json(
