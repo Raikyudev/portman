@@ -39,10 +39,10 @@ export async function POST(request: Request) {
           portfolio_id: 1,
           quantity: 1,
           avg_buy_price: 1,
-          currency: 1,
           "asset_info.symbol": 1,
           "asset_info.name": 1,
           "asset_info.price": 1,
+          "asset_info.currency": 1,
         },
       },
     ]);

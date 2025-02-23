@@ -48,10 +48,10 @@ export async function POST() {
             portfolio_id: 1,
             quantity: 1,
             avg_buy_price: 1,
-            currency: 1,
             "asset_info.symbol": 1,
             "asset_info.name": 1,
             "asset_info.price": 1,
+            "asset_info.currency": 1,
           },
         },
       ]);
@@ -62,7 +62,6 @@ export async function POST() {
       }
 
       let totalValue = 0;
-      const currency = portfolioAssets[0].currency;
       console.log(portfolioAssets[0]);
       portfolioAssets.forEach(({ asset_info, quantity }) => {
         console.log("Asset: ", asset_info.symbol, " Quantity: ", quantity, "");
@@ -73,7 +72,6 @@ export async function POST() {
         portfolio_id,
         port_history_date: new Date(),
         port_total_value: totalValue,
-        port_total_value_currency: currency,
       });
 
       await newHistory.save();

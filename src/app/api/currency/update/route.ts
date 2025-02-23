@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import CurrencyRate from "@/models/CurrencyRate";
-
-const SUPPORTED_CURRENCIES = ["cad", "gbp", "eur", "jpy", "hkd", "cny"];
+import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 
 export async function POST() {
   await dbConnect();

@@ -18,7 +18,7 @@ export default function WatchlistButton({ assetId }: WatchlistButtonProps) {
       }
     };
 
-    fetchWatchlistStatus();
+    fetchWatchlistStatus().then(() => {});
   }, [assetId]);
 
   const toggleWatchlist = async () => {
