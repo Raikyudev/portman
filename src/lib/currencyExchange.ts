@@ -1,6 +1,13 @@
 import CurrencyRate from "@/models/CurrencyRate";
 
 export async function getExchangeRate(currency1: string, currency2?: string) {
+  if (currency1 === "USD") {
+    return {
+      base: "USD",
+      currency: currency1,
+      rate: 1,
+    };
+  }
   const c1 = currency1.toUpperCase();
   const c2 = currency2 ? currency2.toUpperCase() : "USD";
 

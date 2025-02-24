@@ -11,10 +11,14 @@
     "test": "jest"
   },
   "dependencies": {
+    "@json2csv/plainjs": "^7.0.6",
     "bcryptjs": "^2.4.3",
+    "exceljs": "^4.4.0",
+    "json2csv": "^6.0.0-alpha.2",
     "mongoose": "^8.10.0",
     "nest-auth": "^0.0.1",
     "next": "^15.1.6",
+    "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.1",
