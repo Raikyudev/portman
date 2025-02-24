@@ -97,12 +97,12 @@ export async function POST(request: Request) {
         to_date: new Date(toDate),
       },
       file_name: fileName,
-      file_buffer: fileBuffer,
     });
 
     await newReport.save();
+    const resolvedFileBuffer = await fileBuffer;
 
-    return new Response(fileBuffer, {
+    return new Response(resolvedFileBuffer, {
       headers: {
         "Content-Type": mimeType,
         "Content-Disposition": `attachment; filename="${fileName}"`,
