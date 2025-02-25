@@ -52,24 +52,34 @@ export default async function fetchAssets() {
       console.log(`Processing... ${stocks.length} assets`);
     }, 10_000);
 
-    const bulkOps = stocks.map((stock) => {
-      return {
-        updateOne: {
-          filter: { symbol: stock.symbol },
-          update: {
-            $set: {
-              symbol: stock.symbol,
-              name: stock.name,
-              price: stock.price || 0,
-              currency: exchangeCurrencyMap[stock.exchange] || "USD",
-              market: stock.exchangeShortName,
-              asset_type: stock.type,
+    const bulkOps = await Promise.all(
+      stocks.map(async (stock) => {
+        const existingAsset = await Asset.findOne({ symbol: stock.symbol });
+        const lastPrice = existingAsset ? existingAsset.price : stock.price;
+        const priceChangePct =
+          lastPrice && stock.price
+            ? ((stock.price - lastPrice) / lastPrice) * 100
+            : 0;
+
+        return {
+          updateOne: {
+            filter: { symbol: stock.symbol },
+            update: {
+              $set: {
+                symbol: stock.symbol,
+                name: stock.name,
+                price: stock.price || 0,
+                priceChangePct: priceChangePct,
+                currency: exchangeCurrencyMap[stock.exchange] || "USD",
+                market: stock.exchangeShortName,
+                asset_type: stock.type,
+              },
             },
+            upsert: true,
           },
-          upsert: true,
-        },
-      };
-    });
+        };
+      }),
+    );
 
     if (bulkOps.length > 0) {
       const result = await Asset.bulkWrite(bulkOps);

@@ -3,19 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+    --black: #1a1a1d;
+    --white: #ffffff;
+    --gray: #737373;
+    --red: #e00425;
+
+
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+input {
+    @apply bg-black text-white border border-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-white;
 }

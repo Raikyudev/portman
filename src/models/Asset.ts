@@ -7,6 +7,7 @@ export interface IAsset extends Document {
   name: string;
   asset_type: string;
   price: number;
+  price_change_pct: number;
   currency: Currency;
   market: string;
 }
@@ -26,6 +27,10 @@ const assetSchema: Schema = new mongoose.Schema({
     required: true,
   },
   price: {
+    type: Number,
+    default: 0.0,
+  },
+  price_change_pct: {
     type: Number,
     default: 0.0,
   },

@@ -2,18 +2,15 @@
 
 import { useRouter } from "next/navigation";
 
-
 export default function Home() {
-    const router = useRouter();
+  const router = useRouter();
   return (
-    <div className="container">
-        <h1>Portman</h1>
-        <div>
-            <button onClick={() => router.push("/auth/login")}>Login</button>
-            <button onClick={() => router.push("/auth/register")}>Register</button>
-        </div>
-
+    <div className="grid place-items-center">
+      <h1>Portman</h1>
+      <div>
+        <button onClick={() => router.push("/auth/login")}>Login</button>
+        <button onClick={() => router.push("/auth/register")}>Register</button>
+      </div>
     </div>
-
   );
 }
