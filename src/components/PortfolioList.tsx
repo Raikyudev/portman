@@ -1,4 +1,7 @@
 import { IPortfolio } from "@/models/Portfolio";
+import { Button } from "@/components/ui/button";
+
+import { useRouter } from "next/navigation";
 
 interface PortfolioListProps {
   portfolios: IPortfolio[];
@@ -13,8 +16,20 @@ export default function PortfolioList({
   setExpandedPortfolio,
   fetchPortfolioAssets,
 }: PortfolioListProps) {
-  if (portfolios.length === 0)
-    return <p>You don&apos;t have any portfolios yet.</p>;
+  const router = useRouter();
+  if (portfolios.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-gray-600">You don’t have any portfolios yet.</p>
+        <Button
+          onClick={() => router.push("/portfolio/add")}
+          className="bg-red text-white"
+        >
+          Add Portfolio
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
