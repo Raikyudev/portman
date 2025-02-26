@@ -12,9 +12,9 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        username: {
-          label: "Username",
-          type: "text",
+        email: {
+          label: "Email",
+          type: "email",
         },
         password: {
           label: "Password",
@@ -23,14 +23,14 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         console.log(credentials);
-        if (!credentials || !credentials.username || !credentials.password) {
+        if (!credentials || !credentials.email || !credentials.password) {
           throw new Error("Missing credentials");
         }
 
         await dbConnect();
 
         const user = await User.findOne({
-          username: credentials.username,
+          email: credentials.email,
         });
 
         if (!user) {
