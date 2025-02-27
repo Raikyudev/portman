@@ -55,11 +55,12 @@ export default function RegisterForm() {
       const result = await response.json();
 
       if (response.ok) {
-        setSuccess("Sign up successful! Redirecting to login...");
-        setTimeout(() => {
-          reset();
-          router.push("/auth/login");
-        }, 3000);
+        setSuccess(
+          "Sign up successful! Please check your email to verify your account.",
+        );
+
+        reset();
+        router.push("/auth/login");
       } else {
         setError(result.error);
       }

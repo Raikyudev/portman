@@ -5,8 +5,14 @@ import { dbConnect } from "@/lib/mongodb";
 import User, { IUser } from "@/models/User";
 
 export const authOptions: AuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60,
   },
   providers: [
     CredentialsProvider({
@@ -35,6 +41,10 @@ export const authOptions: AuthOptions = {
 
         if (!user) {
           throw new Error("Invalid credentials");
+        }
+
+        if (!user.isVerified) {
+          throw new Error("Please verify your email before logging in.");
         }
 
         const passwordsMatch = await bcrypt.compare(
@@ -83,9 +93,25 @@ export const authOptions: AuthOptions = {
       }
       return session;
     },
+    async redirect({
+      url,
+      baseUrl,
+    }: {
+      url: string;
+      baseUrl: string;
+    }): Promise<string> {
+      const isLocalhost = url.includes("localhost");
+      const isValidUrl = url.startsWith(baseUrl) || url.startsWith("/");
+
+      if (isValidUrl || isLocalhost) {
+        return url;
+      }
+      return baseUrl + "/portfolio";
+    },
   },
   pages: {
     signIn: "/auth/login",
     signOut: "/auth/logout",
+    error: "/auth/error",
   },
 };

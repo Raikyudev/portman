@@ -11,6 +11,9 @@ export interface IUser extends Document {
   password: string;
   preferences: IUserPreferences;
   created_at: Date;
+  isVerified: boolean;
+  verificationToken?: string;
+  verificationTokenExpires?: Date;
 }
 
 const userSchema: Schema = new mongoose.Schema({
@@ -37,6 +40,16 @@ const userSchema: Schema = new mongoose.Schema({
   created_at: {
     type: Date,
     default: Date.now,
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+  },
+  verificationTokenExpires: {
+    type: Date,
   },
 });
 
