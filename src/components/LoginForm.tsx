@@ -153,7 +153,7 @@ export default function LoginForm() {
           </div>
         </div>
 
-        <div className="text-center text-sm">
+        <div className="text-center text-sm p-4">
           <span className="text-gray-400">Don&apos;t have an account? </span>
           <Link
             href="/auth/register"
