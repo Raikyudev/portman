@@ -1,3 +1,9 @@
+import ProtectedLayout from "@/app/ProtectedLayout";
+
 export default function Page() {
-  return <div>hi</div>;
+  return (
+    <ProtectedLayout>
+      <div>hi</div>
+    </ProtectedLayout>
+  );
 }

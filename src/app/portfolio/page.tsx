@@ -6,6 +6,7 @@ import { IPortfolio } from "@/models/Portfolio";
 import PortfolioList from "@/components/PortfolioList";
 import PortfolioItem from "@/components/PortfolioItem";
 import { IExtendedPortfolioAsset } from "@/types/portfolio";
+import ProtectedLayout from "@/app/ProtectedLayout";
 
 export default function Page() {
   const [portfolios, setPortfolios] = useState<IPortfolio[]>([]);
@@ -16,7 +17,8 @@ export default function Page() {
     null,
   );
   const [loading, setLoading] = useState(true);
-  const { data: session } = useSession();
+  const session = useSession();
+  console.log(session);
 
   const fetchPortfolioAssets = useCallback(
     async (portfolioId: string) => {
@@ -64,24 +66,26 @@ export default function Page() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div>
-      <h1>Hi {session?.user?.first_name || "User"}, Your portfolios</h1>
-      <PortfolioList
-        portfolios={portfolios}
-        expandedPortfolio={expandedPortfolio}
-        setExpandedPortfolio={setExpandedPortfolio}
-        fetchPortfolioAssets={fetchPortfolioAssets}
-      />
-      <ul>
-        {portfolios.map((portfolio) => (
-          <PortfolioItem
-            key={portfolio._id.toString()}
-            portfolio={portfolio}
-            assets={portfolioAssets[portfolio._id.toString()] || []}
-            expandedPortfolio={expandedPortfolio}
-          />
-        ))}
-      </ul>
-    </div>
+    <ProtectedLayout>
+      <div>
+        <h1>Hi {session?.data?.user.first_name || "User"}, Your portfolios</h1>
+        <PortfolioList
+          portfolios={portfolios}
+          expandedPortfolio={expandedPortfolio}
+          setExpandedPortfolio={setExpandedPortfolio}
+          fetchPortfolioAssets={fetchPortfolioAssets}
+        />
+        <ul>
+          {portfolios.map((portfolio) => (
+            <PortfolioItem
+              key={portfolio._id.toString()}
+              portfolio={portfolio}
+              assets={portfolioAssets[portfolio._id.toString()] || []}
+              expandedPortfolio={expandedPortfolio}
+            />
+          ))}
+        </ul>
+      </div>
+    </ProtectedLayout>
   );
 }

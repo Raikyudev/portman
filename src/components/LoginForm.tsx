@@ -99,8 +99,7 @@ export default function LoginForm() {
                 Password
               </Label>
               <Link
-                //href="/auth/forgot-password"
-                href={"#"}
+                href="/auth/forgot-password"
                 className="text-sm text-gray-400 hover:text-white transition-colors"
               >
                 Forgot your password?
