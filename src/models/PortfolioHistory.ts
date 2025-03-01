@@ -5,7 +5,6 @@ export interface IPortfolioHistory extends Document {
   portfolio_id: Schema.Types.ObjectId;
   port_history_date: Date;
   port_total_value: number;
-  port_total_value_currency: string;
 }
 
 const PortfolioHistorySchema = new Schema<IPortfolioHistory>({

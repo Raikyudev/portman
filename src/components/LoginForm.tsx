@@ -53,7 +53,7 @@ export default function LoginForm() {
         setSuccess("Log in successful! Redirecting to Dashboard...");
         setTimeout(() => {
           reset();
-          router.push("/portfolio");
+          router.push("/dashboard");
         }, 1000);
       } else {
         const errorMessage = response?.error || "Invalid login credentials.";

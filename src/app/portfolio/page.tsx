@@ -44,7 +44,7 @@ export default function Page() {
     const fetchPortfolios = async () => {
       try {
         const response = await fetch("/api/portfolio");
-        if (!response.ok) console.error("Unauthorized");
+        if (!response.ok) console.error("Error fetching portfolios");
 
         const data: IPortfolio[] = await response.json();
         setPortfolios(data ?? []);
