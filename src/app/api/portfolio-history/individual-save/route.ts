@@ -126,9 +126,10 @@ export async function POST(request: Request) {
           stockPrices[date] || "N/A",
         );
 
-        const port_total_value = calculatePortfolioValue(holdings, {
-          [date]: stockPrices[date] || 0,
-        });
+        const port_total_value = calculatePortfolioValue(
+          holdings,
+          stockPrices[date] || {},
+        );
         console.log("Portfolio value for date", date, ":", port_total_value);
 
         const existing = await PortfolioHistory.findOne({
