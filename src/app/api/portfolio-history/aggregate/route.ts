@@ -1,13 +1,20 @@
 // pages/api/portfolio-history/aggregate.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
-import PortfolioHistory from "@/models/PortfolioHistory";
+import PortfolioHistory from "@/models/PortfolioHistory"; // Adjust import
 import { IExtendedTransaction } from "@/types/Transaction"; // Adjust import path
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth"; // Adjust import path
 import { getTransactions } from "@/lib/transactions"; // Adjust import path
 import Portfolio from "@/models/Portfolio"; // Adjust import path
 import { cookies } from "next/headers";
+import { getDateRange } from "@/lib/utils";
+
+interface AggregatedHistoryEntry {
+  portfolio_id: string;
+  port_history_date: Date;
+  port_total_value: number;
+}
 
 export async function GET(request: Request) {
   await dbConnect();
@@ -22,16 +29,22 @@ export async function GET(request: Request) {
 
     const userId = session.user.id;
 
-    // Fetch existing aggregated history
-    let history = await PortfolioHistory.find({ portfolio_id: userId }).sort({
-      port_history_date: 1, // Ascending order for chronological history
-    });
-
-    // Fetch all portfolios for the user
+    // Fetch all portfolios for the user to get portfolio IDs
     const portfolios = await Portfolio.find({ user_id: userId }).select("_id");
+    console.log("Portfolios fetched for userId:", userId, portfolios);
     if (!portfolios || portfolios.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 });
     }
+
+    // Extract portfolio IDs
+    const portfolioIds = portfolios.map((portfolio) =>
+      portfolio._id.toString(),
+    );
+
+    // Fetch existing history for all portfolios
+    const history = await PortfolioHistory.find({
+      portfolio_id: { $in: portfolioIds },
+    }).sort({ port_history_date: 1 }); // Aggregate history across all portfolios
 
     // Fetch transactions for all portfolios
     const allTransactions: IExtendedTransaction[] = [];
@@ -42,6 +55,7 @@ export async function GET(request: Request) {
       allTransactions.push(...transactions);
     }
 
+    console.log("Total transactions fetched:", allTransactions.length);
     if (allTransactions.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 });
     }
@@ -63,7 +77,7 @@ export async function GET(request: Request) {
     );
     const missingDates = allDates.filter((date) => !existingDates.has(date));
 
-    // Trigger POST to save missing history if any
+    // Trigger POST to save missing history only if there are missing dates
     if (missingDates.length > 0) {
       console.log("Triggering aggregate-save for missing dates:", missingDates);
       const cookie = (await cookies()).get("next-auth.session-token"); // Get the session token
@@ -98,12 +112,39 @@ export async function GET(request: Request) {
       console.log("Aggregate-save result:", saveResult);
 
       // Refetch history after saving
-      history = await PortfolioHistory.find({ portfolio_id: userId }).sort({
-        port_history_date: 1,
-      });
+      const updatedHistory = await PortfolioHistory.find({
+        portfolio_id: { $in: portfolioIds },
+      }).sort({ port_history_date: 1 });
+      history.push(...updatedHistory); // Combine with existing history (deduplication handled by Set below)
+    } else {
+      console.log("No missing dates to calculate, skipping aggregate-save");
     }
 
-    return NextResponse.json({ data: history }, { status: 200 });
+    // Aggregate history by date (sum port_total_value across portfolios for each date)
+    const aggregatedHistory: AggregatedHistoryEntry[] = [];
+    const dateValues = new Map<string, number>();
+    history.forEach((entry) => {
+      const dateStr = entry.port_history_date.toISOString().split("T")[0];
+      const currentValue = dateValues.get(dateStr) || 0;
+      dateValues.set(dateStr, currentValue + entry.port_total_value);
+    });
+
+    dateValues.forEach((totalValue, dateStr) => {
+      aggregatedHistory.push({
+        portfolio_id: userId, // Use userId for aggregated data
+        port_history_date: new Date(dateStr),
+        port_total_value: totalValue,
+      });
+    });
+
+    // Sort by date
+    aggregatedHistory.sort(
+      (a, b) =>
+        new Date(a.port_history_date).getTime() -
+        new Date(b.port_history_date).getTime(),
+    );
+
+    return NextResponse.json({ data: aggregatedHistory }, { status: 200 });
   } catch (error) {
     console.error("Error fetching aggregated portfolio history:" + error);
     return NextResponse.json(
@@ -111,16 +152,4 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-}
-
-// Helper function to generate date range
-function getDateRange(startDate: string, endDate: string): string[] {
-  const dates: string[] = [];
-  const currentDate = new Date(startDate);
-  const end = new Date(endDate);
-  while (currentDate <= end) {
-    dates.push(currentDate.toISOString().split("T")[0]);
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  return dates;
 }

@@ -10,7 +10,7 @@ import {
   calculatePortfolioValue,
   calculateStockHoldings,
 } from "@/lib/portfolioCalculations";
-import { getStockPrices } from "@/lib/stockPrices";
+import { getStocksPriceForDay } from "@/lib/stockPrices";
 
 export async function POST(request: Request) {
   try {
@@ -30,25 +30,36 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const transactions = await getTransactions(portfolioId);
-    const stockHoldings = await calculateStockHoldings(transactions, toDate);
+    const stockHoldingsFrom = await calculateStockHoldings(
+      transactions,
+      fromDate,
+    );
+    const stockHoldingsTo = await calculateStockHoldings(transactions, toDate);
     console.log("test");
 
-    const stockValuesFrom = await getStockPrices(stockHoldings, fromDate);
-    const stockValuesTo = await getStockPrices(stockHoldings, toDate);
+    const stockValuesFrom = await getStocksPriceForDay(
+      stockHoldingsFrom,
+      fromDate,
+    );
+    console.log("Stock prices fetched for fromDate:", stockValuesFrom);
+
+    const stockValuesTo = await getStocksPriceForDay(stockHoldingsTo, toDate);
+    console.log("Stock prices fetched for toDate:", stockValuesTo);
 
     const portfolioValueFrom = calculatePortfolioValue(
-      stockHoldings,
+      stockHoldingsFrom,
       stockValuesFrom,
     );
     const portfolioValueTo = calculatePortfolioValue(
-      stockHoldings,
+      stockHoldingsTo,
       stockValuesTo,
     );
     const generationInputs = {
       fromDate,
       toDate,
       transactions,
-      stockHoldings,
+      stockHoldingsFrom,
+      stockHoldingsTo,
       stockValuesFrom,
       stockValuesTo,
       portfolioValueFrom,

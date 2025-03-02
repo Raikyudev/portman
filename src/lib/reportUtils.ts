@@ -1,3 +1,4 @@
+// lib/reportUtils.ts
 import { Parser } from "@json2csv/plainjs";
 import ExcelJS from "exceljs";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
@@ -7,9 +8,19 @@ export function generateCSV(data: {
   toDate: string;
   portfolioValueFrom: number;
   portfolioValueTo: number;
-  stockHoldings: Record<string, number>;
+  stockHoldingsFrom: Record<string, number>;
+  stockHoldingsTo: Record<string, number>;
 }) {
-  const parser = new Parser({ fields: Object.keys(data) });
+  const parser = new Parser({
+    fields: [
+      "fromDate",
+      "toDate",
+      "portfolioValueFrom",
+      "portfolioValueTo",
+      "stockHoldingsFrom",
+      "stockHoldingsTo",
+    ],
+  });
   return parser.parse([data]);
 }
 
@@ -18,7 +29,8 @@ export async function generateExcel(data: {
   toDate: string;
   portfolioValueFrom: number;
   portfolioValueTo: number;
-  stockHoldings: Record<string, number>;
+  stockHoldingsFrom: Record<string, number>;
+  stockHoldingsTo: Record<string, number>;
 }) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Portfolio Report");
@@ -35,7 +47,8 @@ export async function generateExcel(data: {
     ["To Date", data.toDate],
     ["Portfolio Value (From)", data.portfolioValueFrom],
     ["Portfolio Value (To)", data.portfolioValueTo],
-    ["Stock Holdings", JSON.stringify(data.stockHoldings, null, 2)],
+    ["Stock Holdings (From)", JSON.stringify(data.stockHoldingsFrom, null, 2)],
+    ["Stock Holdings (To)", JSON.stringify(data.stockHoldingsTo, null, 2)],
   ];
 
   rows.forEach((row) => sheet.addRow(row));
@@ -49,7 +62,8 @@ export async function generatePDF(data: {
   toDate: string;
   portfolioValueFrom: number;
   portfolioValueTo: number;
-  stockHoldings: Record<string, number>;
+  stockHoldingsFrom: Record<string, number>;
+  stockHoldingsTo: Record<string, number>;
 }) {
   const pdfDoc = await PDFDocument.create();
   let page = pdfDoc.addPage([600, 500]);
@@ -79,10 +93,39 @@ export async function generatePDF(data: {
     yPosition -= 20;
   });
 
-  page.drawText("Stock Holdings:", { x: 50, y: yPosition, font, size: 14 });
+  // Add stock holdings for fromDate
+  page.drawText("Stock Holdings (From Date):", {
+    x: 50,
+    y: yPosition,
+    font,
+    size: 14,
+  });
   yPosition -= 20;
+  Object.entries(data.stockHoldingsFrom).forEach(([ticker, quantity]) => {
+    if (yPosition < 50) {
+      page = pdfDoc.addPage([600, 500]);
+      yPosition = height - 50;
+    }
+    page.drawText(`${ticker}: ${quantity} shares`, {
+      x: 50,
+      y: yPosition,
+      font,
+      size: 12,
+    });
+    yPosition -= 20;
+  });
 
-  Object.entries(data.stockHoldings).forEach(([ticker, quantity]) => {
+  // Add stock holdings for toDate
+  yPosition = height - 50; // Reset yPosition for a new page or section
+  page = pdfDoc.addPage([600, 500]); // Start a new page for toDate holdings
+  page.drawText("Stock Holdings (To Date):", {
+    x: 50,
+    y: yPosition,
+    font,
+    size: 14,
+  });
+  yPosition -= 20;
+  Object.entries(data.stockHoldingsTo).forEach(([ticker, quantity]) => {
     if (yPosition < 50) {
       page = pdfDoc.addPage([600, 500]);
       yPosition = height - 50;

@@ -29,8 +29,6 @@ const watchlist = [
   { symbol: "AAPL", price: 236, change: "+2%" },
   { symbol: "TSLA", price: 430, change: "-5%" },
 ];
-const topGainers = [{ symbol: "AAPL", price: 236, change: "+2%" }];
-const topLosers = [{ symbol: "NVDA", price: 870, change: "-10%" }];
 const recentTransactions = [
   {
     date: "2025-02-01",
@@ -53,6 +51,12 @@ export default function DashboardPage() {
   const [portfolioValue, setPortfolioValue] = useState(0);
   const [profitLoss, setProfitLoss] = useState({ percentage: 0, amount: 0 });
   const [error, setError] = useState<string | null>(null);
+  const [topGainers, setTopGainers] = useState<
+    { symbol: string; price: number; change: string }[]
+  >([]);
+  const [topLosers, setTopLosers] = useState<
+    { symbol: string; price: number; change: string }[]
+  >([]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -70,17 +74,17 @@ export default function DashboardPage() {
         const userId = session.user.id;
         console.log("Fetching aggregated history for userId:", userId);
         const response = await fetch(`/api/portfolio-history/aggregate`, {
-          credentials: "include", // Ensure cookies are sent for authentication
+          credentials: "include",
         });
         console.log("Fetch response:", {
           status: response.status,
           statusText: response.statusText,
         });
         if (!response.ok) {
-          const errorText = await response.text(); // Get response body
+          const data = await response.json();
           console.error("Fetch failed:", {
             status: response.status,
-            errorText,
+            error: data.error || "Unknown error",
           });
         }
         const { data } = await response.json();
@@ -89,7 +93,7 @@ export default function DashboardPage() {
         setError(null);
 
         if (data.length > 0) {
-          const latestValue = data[data.length - 1].port_total_value; // Last entry (chronological)
+          const latestValue = data[data.length - 1].port_total_value;
           setPortfolioValue(latestValue);
           const oldestValue = data[0].port_total_value || latestValue;
           const percentageChange =
@@ -108,7 +112,42 @@ export default function DashboardPage() {
       }
     };
 
-    fetchPortfolioHistory();
+    const fetchMarketData = async () => {
+      try {
+        const response = await fetch("/api/market/top", {
+          credentials: "include",
+        });
+        console.log("Market API Response:", {
+          status: response.status,
+          statusText: response.statusText,
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          console.error("Market API failed:", {
+            status: response.status,
+            error: data.error || "Unknown error",
+          });
+        }
+        const { topGainers, topLosers, gainersPeriod, losersPeriod } =
+          await response.json();
+        console.log("Market Data:", {
+          topGainers,
+          topLosers,
+          gainersPeriod,
+          losersPeriod,
+        });
+        setTopGainers(topGainers);
+        setTopLosers(topLosers);
+      } catch (error) {
+        console.error("Error in fetchMarketData:", error);
+        setError(
+          error instanceof Error ? error.message : "Unknown error occurred",
+        );
+      }
+    };
+
+    fetchPortfolioHistory().then(() => {});
+    fetchMarketData().then(() => {});
   }, [status, session]);
 
   const chartData = portfolioHistory.map((entry) => ({
@@ -123,12 +162,12 @@ export default function DashboardPage() {
           Hi, {session?.user?.first_name || "User "} (All Portfolios)
         </h1>
         {error && <div className="text-red-500 mb-4">{error}</div>}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 auto-rows-max">
           <Card>
             <CardHeader>
               <CardTitle>Your Watchlist</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -141,7 +180,7 @@ export default function DashboardPage() {
                   {watchlist.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.symbol}</TableCell>
-                      <TableCell>${item.price}</TableCell>
+                      <TableCell>${item.price.toLocaleString()}</TableCell>
                       <TableCell>{item.change}</TableCell>
                     </TableRow>
                   ))}
@@ -154,7 +193,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Top Gainers Today</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -164,13 +203,19 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topGainers.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.symbol}</TableCell>
-                      <TableCell>${item.price}</TableCell>
-                      <TableCell>{item.change}</TableCell>
+                  {topGainers.length > 0 ? (
+                    topGainers.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.symbol}</TableCell>
+                        <TableCell>${item.price.toLocaleString()}</TableCell>
+                        <TableCell>{item.change}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3}>No data available</TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -180,7 +225,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Top Losers Today</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -190,13 +235,19 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {topLosers.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.symbol}</TableCell>
-                      <TableCell>${item.price}</TableCell>
-                      <TableCell>{item.change}</TableCell>
+                  {topLosers.length > 0 ? (
+                    topLosers.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.symbol}</TableCell>
+                        <TableCell>${item.price.toLocaleString()}</TableCell>
+                        <TableCell>{item.change}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3}>No data available</TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -206,7 +257,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Total Portfolio Value</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-auto">
               <div className="text-2xl font-bold">
                 ${portfolioValue.toLocaleString()}
               </div>
@@ -236,6 +287,10 @@ export default function DashboardPage() {
                       tick={{ fill: "#6b7280" }}
                     />
                     <Tooltip
+                      formatter={(value: number, name, props) => [
+                        `$${value.toLocaleString()} (${props.payload.date})`,
+                        "Value",
+                      ]}
                       contentStyle={{
                         backgroundColor: "#ffffff",
                         border: "1px solid #e5e7eb",
@@ -262,7 +317,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Recent Transactions</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -294,7 +349,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Top Holdings</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

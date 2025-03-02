@@ -7,10 +7,10 @@ import {
   calculatePortfolioValue,
 } from "@/lib/portfolioCalculations";
 import { getStockPrices } from "@/lib/stockPrices";
-import { IExtendedTransaction } from "@/types/Transaction"; // Adjust import path
-import { getTransactions } from "@/lib/transactions"; // Adjust import path
-import Portfolio from "@/models/Portfolio"; // Adjust import path
-import { getTodayDate } from "@/lib/utils"; // Hypothetical utility function
+import { IExtendedTransaction } from "@/types/Transaction";
+import { getTransactions } from "@/lib/transactions";
+import Portfolio from "@/models/Portfolio";
+import { getTodayDate, getDateRange } from "@/lib/utils";
 import { config } from "dotenv";
 
 config(); // Load environment variables from .env.local
@@ -45,45 +45,43 @@ export async function POST(request: Request) {
       );
     }
 
-    // Group portfolios by user_id
-    const users = [...new Set(portfolios.map((p) => p.user_id))];
-    console.log("Unique users found:", users.length);
+    console.log("Unique portfolios found:", portfolios.length);
 
     let overallResult: IPortfolioHistory[] = [];
 
-    for (const userId of users) {
-      console.log("Processing history for userId:", userId);
+    for (const portfolio of portfolios) {
+      const portfolioId = portfolio._id.toString();
+      console.log("Processing history for portfolioId:", portfolioId);
 
-      // Fetch transactions for all portfolios of this user
-      const userPortfolios = portfolios.filter((p) => p.user_id === userId);
-      const allTransactions: IExtendedTransaction[] = [];
-      for (const portfolio of userPortfolios) {
-        const transactions = (await getTransactions(
-          portfolio._id.toString(),
-        )) as IExtendedTransaction[];
-        allTransactions.push(...transactions);
-      }
+      // Fetch transactions for this portfolio
+      const transactions = (await getTransactions(
+        portfolioId,
+      )) as IExtendedTransaction[];
 
-      if (allTransactions.length === 0) {
-        console.log("No transactions found for userId:", userId);
+      if (transactions.length === 0) {
+        console.log("No transactions found for portfolioId:", portfolioId);
         continue;
       }
 
-      // Determine the start date (earliest transaction date across all portfolios)
+      // Determine the start date (earliest transaction date)
       const earliestTransactionDate = new Date(
-        Math.min(
-          ...allTransactions.map((tx) => new Date(tx.tx_date).getTime()),
-        ),
+        Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
       )
         .toISOString()
         .split("T")[0];
       const endDate = getTodayDate();
       const allDates = getDateRange(earliestTransactionDate, endDate);
-      console.log("Date range for user", userId, ":", allDates.length, "days");
+      console.log(
+        "Date range for portfolio",
+        portfolioId,
+        ":",
+        allDates.length,
+        "days",
+      );
 
-      // Fetch existing aggregated history for this user
+      // Fetch existing history for this portfolio
       const existingHistory = await PortfolioHistory.find({
-        portfolio_id: userId,
+        portfolio_id: portfolioId,
       }).sort({ port_history_date: 1 });
       const existingDates = new Set(
         existingHistory.map(
@@ -94,100 +92,52 @@ export async function POST(request: Request) {
         (date) => !existingDates.has(date),
       );
       console.log(
-        "Dates to calculate for user",
-        userId,
+        "Dates to calculate for portfolio",
+        portfolioId,
         ":",
         datesToCalculate.length,
       );
 
       if (datesToCalculate.length === 0) {
-        console.log("No missing days to calculate for user:", userId);
+        console.log("No missing days to calculate for portfolio:", portfolioId);
         continue;
       }
 
-      // Track last known prices
-      const lastKnownPrices: { [symbol: string]: number } = {};
-      // Initialize with transaction prices for the earliest date
-      const earliestTransactions = allTransactions.filter(
-        (tx) =>
-          new Date(tx.tx_date).toISOString().split("T")[0] ===
-          earliestTransactionDate,
-      );
-      earliestTransactions.forEach((tx) => {
-        lastKnownPrices[tx.asset_details.symbol] = tx.price_per_unit;
-      });
-      console.log(
-        "Initial last known prices for user",
-        userId,
-        ":",
-        lastKnownPrices,
-      );
-
-      // Calculate and save aggregated history for this user
+      // Calculate and save history for this portfolio
       const newHistory = await Promise.all(
         datesToCalculate.map(async (date) => {
-          console.log("Processing date for user", userId, ":", date);
-          const holdings = await calculateStockHoldings(allTransactions, date);
-          console.log("Holdings calculated:", Object.keys(holdings).length);
-          const stockPrices = await getStockPrices(holdings, date);
-          console.log("Stock prices fetched for date", date, ":", stockPrices);
+          console.log("Processing date for portfolio", portfolioId, ":", date);
+          const holdings = await calculateStockHoldings(transactions, date);
+          console.log("Holdings calculated:", holdings);
+          const stockPrices = await getStockPrices(
+            holdings,
+            earliestTransactionDate,
+            endDate,
+          ); // Use range
+          console.log(
+            "Stock prices fetched for date range",
+            earliestTransactionDate,
+            "to",
+            endDate,
+            ":",
+            stockPrices[date] || "N/A",
+          );
 
-          let port_total_value;
-          if (
-            !stockPrices ||
-            Object.values(stockPrices).every(
-              (price) => price === 0 || price === undefined,
-            )
-          ) {
-            console.warn(
-              "No valid price data for date:",
-              date,
-              "Using last known prices",
-            );
-            // Use last known prices, ensuring non-zero values
-            const fallbackPrices: { [symbol: string]: number } = {};
-            for (const symbol in holdings) {
-              fallbackPrices[symbol] =
-                lastKnownPrices[symbol] ||
-                allTransactions.find((tx) => tx.asset_details.symbol === symbol)
-                  ?.price_per_unit ||
-                0;
-            }
-            port_total_value = calculatePortfolioValue(
-              holdings,
-              fallbackPrices,
-            );
-            console.log(
-              "Fallback value for",
-              date,
-              "using last known prices:",
-              port_total_value,
-            );
-          } else {
-            port_total_value = calculatePortfolioValue(holdings, stockPrices);
-            // Update last known prices with current successful fetch, filtering out zeros
-            Object.keys(stockPrices).forEach((symbol) => {
-              if (stockPrices[symbol] > 0) {
-                lastKnownPrices[symbol] = stockPrices[symbol];
-              }
-            });
-            console.log(
-              "Updated last known prices for user",
-              userId,
-              ":",
-              lastKnownPrices,
-            );
-          }
+          const port_total_value = calculatePortfolioValue(
+            holdings,
+            stockPrices[date] || {},
+          );
+          console.log("Portfolio value for date", date, ":", port_total_value);
 
           const newHistoryEntry = new PortfolioHistory({
-            portfolio_id: userId,
+            portfolio_id: portfolioId,
             port_history_date: new Date(date),
             port_total_value,
           });
           await newHistoryEntry.save();
           console.log(
-            "New history entry saved for user",
-            userId,
+            "New history entry saved for portfolio",
+            portfolioId,
             "date:",
             date,
           );
@@ -200,7 +150,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        message: "Portfolio history updated for all users",
+        message: "Portfolio history updated for all portfolios",
         data: overallResult,
       },
       { status: 200 },
@@ -212,16 +162,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-// Helper function to generate date range
-function getDateRange(startDate: string, endDate: string): string[] {
-  const dates: string[] = [];
-  const currentDate = new Date(startDate);
-  const end = new Date(endDate);
-  while (currentDate <= end) {
-    dates.push(currentDate.toISOString().split("T")[0]);
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  return dates;
 }

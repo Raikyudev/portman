@@ -7,12 +7,12 @@ import {
   calculatePortfolioValue,
 } from "@/lib/portfolioCalculations";
 import { getStockPrices } from "@/lib/stockPrices";
-import { IExtendedTransaction } from "@/types/Transaction"; // Adjust import path
+import { IExtendedTransaction } from "@/types/Transaction";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Adjust import path
-import { getTransactions } from "@/lib/transactions"; // Adjust import path
-import Portfolio from "@/models/Portfolio"; // Adjust import path
-import { getTodayDate } from "@/lib/utils"; // Hypothetical utility function
+import { authOptions } from "@/lib/auth";
+import { getTransactions } from "@/lib/transactions";
+import Portfolio from "@/models/Portfolio";
+import { getTodayDate, getDateRange } from "@/lib/utils";
 
 export async function POST(request: Request) {
   await dbConnect();
@@ -43,7 +43,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate userId from session or body
     const userId = session?.user?.id || bodyUserId;
     console.log("Using userId:", userId);
     if (!userId) {
@@ -78,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     // Generate date range, capping at today
-    const today = getTodayDate(); // Returns "2025-03-01" as ISO string
+    const today = getTodayDate();
     const adjustedToDate = toDate > today ? today : toDate;
     const allDates = getDateRange(fromDate, adjustedToDate);
     console.log(
@@ -109,67 +108,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // Track last known prices
-    const lastKnownPrices: { [symbol: string]: number } = {};
-    // Initialize with transaction prices for the earliest date
-    const earliestTransactions = transactions.filter(
-      (tx) => new Date(tx.tx_date).toISOString().split("T")[0] === fromDate,
-    );
-    earliestTransactions.forEach((tx) => {
-      lastKnownPrices[tx.asset_details.symbol] = tx.price_per_unit;
-    });
-    console.log(
-      "Initial last known prices from transactions:",
-      lastKnownPrices,
-    );
-
-    // Calculate and save individual history for missing or forced update days
+    // Calculate and save individual history
     const newHistory = await Promise.all(
       datesToCalculate.map(async (date) => {
         console.log("Processing date:", date);
         const holdings = await calculateStockHoldings(transactions, date);
         console.log("Holdings calculated:", Object.keys(holdings).length);
-        const stockPrices = await getStockPrices(holdings, date);
-        console.log("Stock prices fetched for date", date, ":", stockPrices);
+        const stockPrices = await getStockPrices(
+          holdings,
+          fromDate,
+          adjustedToDate,
+        ); // Use range
+        console.log(
+          "Stock prices fetched for date",
+          date,
+          ":",
+          stockPrices[date] || "N/A",
+        );
 
-        let port_total_value;
-        if (
-          !stockPrices ||
-          Object.values(stockPrices).every(
-            (price) => price === 0 || price === undefined,
-          )
-        ) {
-          console.warn(
-            "No valid price data for date:",
-            date,
-            "Using last known prices",
-          );
-          // Use last known prices, ensuring non-zero values
-          const fallbackPrices: { [symbol: string]: number } = {};
-          for (const symbol in holdings) {
-            fallbackPrices[symbol] =
-              lastKnownPrices[symbol] ||
-              transactions.find((tx) => tx.asset_details.symbol === symbol)
-                ?.price_per_unit ||
-              0;
-          }
-          port_total_value = calculatePortfolioValue(holdings, fallbackPrices);
-          console.log(
-            "Fallback value for",
-            date,
-            "using last known prices:",
-            port_total_value,
-          );
-        } else {
-          port_total_value = calculatePortfolioValue(holdings, stockPrices);
-          // Update last known prices with current successful fetch, filtering out zeros
-          Object.keys(stockPrices).forEach((symbol) => {
-            if (stockPrices[symbol] > 0) {
-              lastKnownPrices[symbol] = stockPrices[symbol];
-            }
-          });
-          console.log("Updated last known prices:", lastKnownPrices);
-        }
+        const port_total_value = calculatePortfolioValue(holdings, {
+          [date]: stockPrices[date] || 0,
+        });
+        console.log("Portfolio value for date", date, ":", port_total_value);
 
         const existing = await PortfolioHistory.findOne({
           portfolio_id,
@@ -205,16 +165,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-// Helper function to generate date range
-function getDateRange(startDate: string, endDate: string): string[] {
-  const dates: string[] = [];
-  const currentDate = new Date(startDate);
-  const end = new Date(endDate);
-  while (currentDate <= end) {
-    dates.push(currentDate.toISOString().split("T")[0]);
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  return dates;
 }
