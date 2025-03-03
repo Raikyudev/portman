@@ -7,8 +7,6 @@ export async function calculateStockHoldings(
   const holdings: Record<string, number> = {};
 
   transactions.forEach((tx) => {
-    console.log("tx:");
-    console.log(tx);
     if (new Date(tx.tx_date) <= new Date(date)) {
       if (!holdings[tx.asset_details.symbol])
         holdings[tx.asset_details.symbol] = 0;

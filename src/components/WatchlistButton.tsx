@@ -10,11 +10,16 @@ export default function WatchlistButton({ assetId }: WatchlistButtonProps) {
   useEffect(() => {
     const fetchWatchlistStatus = async () => {
       try {
-        const response = await fetch(`/api/watchlist?id=${assetId}`);
+        const response = await fetch("/api/watchlist");
         const data = await response.json();
-        setInWatchlist(data.inWatchlist);
+        console.log("WatchButton data:", data);
+        // Check if assetId matches any asset_id in the response array
+        const isInList =
+          Array.isArray(data) && data.some((item) => item.asset_id === assetId);
+        setInWatchlist(isInList);
       } catch (error) {
         console.error("Error fetching watchlist status:", error);
+        setInWatchlist(false); // Default to false on error
       }
     };
 

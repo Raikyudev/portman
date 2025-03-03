@@ -49,6 +49,7 @@ export async function POST(request: Request) {
 
     let overallResult: IPortfolioHistory[] = [];
 
+    // Process each portfolio
     for (const portfolio of portfolios) {
       const portfolioId = portfolio._id.toString();
       console.log("Processing history for portfolioId:", portfolioId);
@@ -103,29 +104,63 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Calculate and save history for this portfolio
+      // Fetch prices for the entire date range once per portfolio
+      const holdings = await calculateStockHoldings(
+        transactions,
+        earliestTransactionDate,
+      );
+      console.log(
+        "Holdings calculated for portfolio",
+        portfolioId,
+        ":",
+        holdings,
+      );
+      const stockPrices = await getStockPrices(
+        holdings,
+        earliestTransactionDate,
+        endDate,
+      );
+      console.log(
+        "Stock prices fetched for date range",
+        earliestTransactionDate,
+        "to",
+        endDate,
+        ":",
+        stockPrices,
+      );
+
+      // Calculate and save individual history
       const newHistory = await Promise.all(
         datesToCalculate.map(async (date) => {
           console.log("Processing date for portfolio", portfolioId, ":", date);
-          const holdings = await calculateStockHoldings(transactions, date);
-          console.log("Holdings calculated:", holdings);
-          const stockPrices = await getStockPrices(
-            holdings,
-            earliestTransactionDate,
-            endDate,
-          ); // Use range
-          console.log(
-            "Stock prices fetched for date range",
-            earliestTransactionDate,
-            "to",
-            endDate,
-            ":",
-            stockPrices[date] || "N/A",
+          const holdingsForDate = await calculateStockHoldings(
+            transactions,
+            date,
           );
+          console.log("Holdings calculated for date:", {
+            date,
+            holdings: holdingsForDate,
+          });
+
+          if (Object.keys(holdingsForDate).length === 0) {
+            console.log("No holdings found for date, skipping:", date);
+            return null;
+          }
+
+          const pricesForDate = stockPrices[date] || {};
+          console.log("Prices fetched for date:", {
+            date,
+            prices: pricesForDate,
+          });
+
+          if (Object.keys(pricesForDate).length === 0) {
+            console.log("No prices available for date, skipping:", date);
+            return null;
+          }
 
           const port_total_value = calculatePortfolioValue(
-            holdings,
-            stockPrices[date] || {},
+            holdingsForDate,
+            pricesForDate,
           );
           console.log("Portfolio value for date", date, ":", port_total_value);
 
@@ -145,7 +180,9 @@ export async function POST(request: Request) {
         }),
       );
 
-      overallResult = overallResult.concat(newHistory);
+      overallResult = overallResult.concat(
+        newHistory.filter((entry) => entry !== null),
+      );
     }
 
     return NextResponse.json(

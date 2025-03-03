@@ -73,18 +73,36 @@ export async function POST(request: Request) {
       const transactions = (await getTransactions(
         portfolioId,
       )) as IExtendedTransaction[];
+      console.log("Transactions fetched for portfolio:", {
+        portfolioId,
+        length: transactions.length,
+      });
 
       if (transactions.length === 0) {
         console.log("No transactions found for portfolio:", portfolioId);
         continue;
       }
 
-      const allDates = getDateRange(fromDate, adjustedToDate);
+      // Determine the effective start date (earliest transaction or fromDate)
+      const earliestTransactionDate = new Date(
+        Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
+      )
+        .toISOString()
+        .split("T")[0];
+      const effectiveFromDate =
+        fromDate < earliestTransactionDate ? earliestTransactionDate : fromDate;
+      console.log("Effective date range for portfolio", portfolioId, ":", {
+        effectiveFromDate,
+        adjustedToDate,
+      });
+
+      const allDates = getDateRange(effectiveFromDate, adjustedToDate);
       console.log(
-        "Date range generated (capped at today):",
+        "Date range generated (capped at today) for portfolio",
+        portfolioId,
+        ":",
         allDates.length,
         "days",
-        { fromDate, toDate, adjustedToDate },
       );
 
       // Fetch existing history for this portfolio
@@ -111,29 +129,63 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Calculate and save history for this portfolio
+      // Fetch prices for the entire date range once per portfolio
+      const holdings = await calculateStockHoldings(
+        transactions,
+        effectiveFromDate,
+      );
+      console.log(
+        "Holdings calculated for portfolio",
+        portfolioId,
+        ":",
+        holdings,
+      );
+      const stockPrices = await getStockPrices(
+        holdings,
+        effectiveFromDate,
+        adjustedToDate,
+      );
+      console.log(
+        "Stock prices fetched for date range",
+        effectiveFromDate,
+        "to",
+        adjustedToDate,
+        ":",
+        stockPrices,
+      );
+
+      // Calculate and save individual history
       const newHistory = await Promise.all(
         datesToCalculate.map(async (date) => {
-          console.log("Processing date:", date);
-          const holdings = await calculateStockHoldings(transactions, date);
-          console.log("Holdings calculated:", holdings);
-          const stockPrices = await getStockPrices(
-            holdings,
-            fromDate,
-            adjustedToDate,
+          console.log("Processing date for portfolio", portfolioId, ":", date);
+          const holdingsForDate = await calculateStockHoldings(
+            transactions,
+            date,
           );
-          console.log(
-            "Stock prices fetched for date range",
-            fromDate,
-            "to",
-            adjustedToDate,
-            ":",
-            stockPrices[date] || "N/A",
-          );
+          console.log("Holdings calculated for date:", {
+            date,
+            holdings: holdingsForDate,
+          });
+
+          if (Object.keys(holdingsForDate).length === 0) {
+            console.log("No holdings found for date, skipping:", date);
+            return null;
+          }
+
+          const pricesForDate = stockPrices[date] || {};
+          console.log("Prices fetched for date:", {
+            date,
+            prices: pricesForDate,
+          });
+
+          if (Object.keys(pricesForDate).length === 0) {
+            console.log("No prices available for date, skipping:", date);
+            return null;
+          }
 
           const port_total_value = calculatePortfolioValue(
-            holdings,
-            stockPrices[date] || {},
+            holdingsForDate,
+            pricesForDate,
           );
           console.log("Portfolio value for date", date, ":", port_total_value);
 
@@ -145,13 +197,13 @@ export async function POST(request: Request) {
             const newHistoryEntry = new PortfolioHistory({
               portfolio_id: portfolioId,
               port_history_date: new Date(date),
-              port_total_value,
+              port_total_value: port_total_value || 0,
             });
             await newHistoryEntry.save();
             console.log("New history entry saved for date:", date);
             return newHistoryEntry;
           } else if (forceUpdate) {
-            existing.port_total_value = port_total_value;
+            existing.port_total_value = port_total_value || 0;
             await existing.save();
             console.log("Existing entry updated for date:", date);
             return existing;
@@ -160,7 +212,9 @@ export async function POST(request: Request) {
         }),
       );
 
-      overallResult = overallResult.concat(newHistory);
+      overallResult = overallResult.concat(
+        newHistory.filter((entry) => entry !== null),
+      );
     }
 
     return NextResponse.json(

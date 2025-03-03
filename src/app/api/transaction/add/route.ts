@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import PortfolioAsset from "@/models/PortfolioAsset";
 import { getExchangeRate } from "@/lib/currencyExchange";
+import mongoose from "mongoose";
 
 const transactionSchema = z.object({
   portfolio_id: z.string(),
@@ -48,7 +49,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const asset = await Asset.findById(result.data.asset_id);
+  const asset = await Asset.findById(
+    mongoose.Types.ObjectId.createFromHexString(
+      result.data.asset_id.toString(),
+    ),
+  );
   if (!asset) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }

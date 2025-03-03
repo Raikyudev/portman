@@ -6,6 +6,8 @@ interface PortfolioAssetItemProps {
 }
 
 export default function PortfolioAssetItem({ asset }: PortfolioAssetItemProps) {
+  console.log("asset:");
+  console.log(asset);
   return (
     <li>
       <strong>{asset.asset_info.symbol}</strong> - {asset.asset_info.name}
@@ -14,7 +16,7 @@ export default function PortfolioAssetItem({ asset }: PortfolioAssetItemProps) {
       <span>
         Avg Buy Price: {asset.avg_buy_price} ({asset.asset_info.currency})
       </span>
-      <WatchlistButton assetId={asset._id.toString()} />
+      <WatchlistButton assetId={asset.asset_id.toString()} />
     </li>
   );
 }

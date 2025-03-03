@@ -21,7 +21,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export default function Page() {
   const router = useRouter();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const params = useParams();
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -119,7 +119,8 @@ export default function Page() {
     }
 
     try {
-      const response = await fetch("/api/transaction/add", {
+      // Step 1: Add the transaction
+      const addResponse = await fetch("/api/transaction/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -129,22 +130,71 @@ export default function Page() {
         }),
       });
 
-      const result = await response.json();
+      const addResult = await addResponse.json();
 
-      if (!response.ok) {
-        setError("Failed to add transaction: " + result.error);
-        console.error(result.error);
+      if (!addResponse.ok) {
+        setError("Failed to add transaction: " + addResult.error);
+        console.error("Transaction add error:", addResult.error);
+        return;
+      }
+      const portfolioId = params.id; // Explicitly capture portfolio_id
+      const txDate = data.tx_date; // Use the transaction date for history operations
+
+      // Step 2: Delete individual portfolio history for the transaction date
+      const deleteResponse = await fetch(
+        `/api/portfolio-history/individual-delete?portfolio_id=${params.id}&date=${txDate}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      const deleteResult = await deleteResponse.json();
+      console.log("Delete history result:", deleteResult);
+
+      if (!deleteResponse.ok) {
+        console.warn(
+          "Delete failed, proceeding with save:",
+          deleteResult.error,
+        );
+        // Optionally proceed with save even if delete fails
+      }
+      console.log("Params: ");
+      console.log(params);
+      console.log("PortfolioID: " + portfolioId + " Date: " + txDate + "");
+      // Step 3: Save individual portfolio history
+      const saveResponse = await fetch(
+        `/api/portfolio-history/individual-save`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolio_id: portfolioId,
+            fromDate: txDate,
+            toDate: txDate,
+            forceUpdate: true,
+            userId: session?.user?.id,
+          }),
+        },
+      );
+
+      const saveResult = await saveResponse.json();
+      console.log("Save history result:", saveResult);
+
+      if (!saveResponse.ok) {
+        setError("Failed to save history: " + saveResult.error);
+        console.error("History save error:", saveResult.error);
         return;
       }
 
       reset();
       setError(null);
       setTimeout(() => {
-        router.push(`/portfolio/`);
+        router.push(`/portfolio`);
       }, 1000);
     } catch (error) {
-      setError("Error adding transaction.");
-      console.error(error);
+      setError("Error processing transaction and history.");
+      console.error("Overall error:", error);
       return;
     }
   };

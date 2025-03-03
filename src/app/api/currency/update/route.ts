@@ -17,10 +17,11 @@ export async function POST() {
     const data = await response.json();
     const rates = data.usd;
     for (const currency of SUPPORTED_CURRENCIES) {
-      if (rates[currency]) {
+      const lowerCaseCurrency = currency.toLowerCase();
+      if (rates[lowerCaseCurrency]) {
         await CurrencyRate.findOneAndUpdate(
-          { currency: currency.toUpperCase() },
-          { rate: rates[currency], lastUpdated: new Date() },
+          { currency: currency },
+          { rate: rates[lowerCaseCurrency], last_updated: new Date() },
           { upsert: true, new: true },
         );
       }

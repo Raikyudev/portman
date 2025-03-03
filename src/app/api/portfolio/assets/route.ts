@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         $project: {
           _id: 1,
           portfolio_id: 1,
+          asset_id: 1,
           quantity: 1,
           avg_buy_price: 1,
           "asset_info.symbol": 1,

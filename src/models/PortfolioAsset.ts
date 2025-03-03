@@ -4,6 +4,7 @@ export interface IPortfolioAsset extends Document {
   _id: Schema.Types.ObjectId;
   portfolio_id: Schema.Types.ObjectId;
   asset_id: Schema.Types.ObjectId;
+  symbol: string;
   quantity: number;
   avg_buy_price: number;
   created_at: Date;

@@ -23,22 +23,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import Watchlist from "@/components/Watchlist";
+import RecentTransactions from "@/components/RecentTransactions";
 
-// Placeholder data for other sections
-const watchlist = [
-  { symbol: "AAPL", price: 236, change: "+2%" },
-  { symbol: "TSLA", price: 430, change: "-5%" },
-];
-const recentTransactions = [
-  {
-    date: "2025-02-01",
-    symbol: "AAPL",
-    type: "Buy",
-    quantity: 20,
-    price: 220,
-    total: 4400,
-  },
-];
 const topHoldings = [
   { name: "Apple Inc.", shares: 50, value: 11800, percentage: 10 },
 ];
@@ -163,31 +150,7 @@ export default function DashboardPage() {
         </h1>
         {error && <div className="text-red-500 mb-4">{error}</div>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 auto-rows-max">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Watchlist</CardTitle>
-            </CardHeader>
-            <CardContent className="h-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Change</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {watchlist.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.symbol}</TableCell>
-                      <TableCell>${item.price.toLocaleString()}</TableCell>
-                      <TableCell>{item.change}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <Watchlist />
 
           <Card>
             <CardHeader>
@@ -313,37 +276,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
-            </CardHeader>
-            <CardContent className="h-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentTransactions.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.date}</TableCell>
-                      <TableCell>{item.symbol}</TableCell>
-                      <TableCell>{item.type}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>${item.price}</TableCell>
-                      <TableCell>${item.total}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <RecentTransactions />
 
           <Card>
             <CardHeader>

@@ -1,164 +1,161 @@
-// pages/api/portfolio-history/individuals-save.ts
+// pages/api/portfolio-history/individual/route.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
-import PortfolioHistory, { IPortfolioHistory } from "@/models/PortfolioHistory";
-import {
-  calculateStockHoldings,
-  calculatePortfolioValue,
-} from "@/lib/portfolioCalculations";
-import { getStockPrices } from "@/lib/stockPrices";
+import PortfolioHistory from "@/models/PortfolioHistory";
 import { IExtendedTransaction } from "@/types/Transaction";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { getTransactions } from "@/lib/transactions";
 import Portfolio from "@/models/Portfolio";
 import { getTodayDate, getDateRange } from "@/lib/utils";
-import { config } from "dotenv";
+import { Types } from "mongoose";
 
-config(); // Load environment variables from .env.local
+interface IndividualHistoryEntry {
+  portfolio_id: string;
+  port_history_date: Date;
+  port_total_value: number;
+}
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   await dbConnect();
 
   try {
-    // Extract API key from headers
-    const apiKey =
-      request.headers.get("Authorization")?.replace("Bearer ", "") || "";
-    const expectedApiKey = process.env.PORT_HISTORY_KEY;
+    const session = await getServerSession(authOptions);
+    console.log("Session checked in GET:", { session });
+    if (!session || !session.user || !(session.user as { id?: string }).id) {
+      console.log("Unauthorized session in GET:", { session });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    console.log("Received API Key:", apiKey);
-    if (!expectedApiKey || apiKey !== expectedApiKey) {
-      console.log("Invalid or missing API key");
+    const userId = session.user.id;
+    const { searchParams } = new URL(request.url);
+    const portfolioId = searchParams.get("portfolio_id");
+
+    if (!portfolioId || !Types.ObjectId.isValid(portfolioId)) {
       return NextResponse.json(
-        { error: "Unauthorized: Invalid API key" },
-        { status: 401 },
+        { error: "Invalid or missing portfolio_id" },
+        { status: 400 },
       );
     }
 
-    console.log("API key validated successfully");
-
-    // Fetch all portfolios
-    const portfolios = await Portfolio.find({}).select("_id user_id");
-    console.log("Total portfolios fetched:", portfolios.length);
-    if (!portfolios || portfolios.length === 0) {
+    const portfolio = await Portfolio.findOne({
+      _id: new Types.ObjectId(portfolioId),
+      user_id: userId,
+    });
+    console.log("Portfolio fetched for portfolioId:", portfolioId, portfolio);
+    if (!portfolio) {
       return NextResponse.json(
-        { message: "No portfolios found" },
-        { status: 404 },
+        { error: "Portfolio not found or unauthorized" },
+        { status: 403 },
       );
     }
 
-    console.log("Unique portfolios found:", portfolios.length);
-
-    let overallResult: IPortfolioHistory[] = [];
-
-    for (const portfolio of portfolios) {
-      const portfolioId = portfolio._id.toString();
-      console.log("Processing history for portfolioId:", portfolioId);
-
-      // Fetch transactions for this portfolio
-      const transactions = (await getTransactions(
-        portfolioId,
-      )) as IExtendedTransaction[];
-
-      if (transactions.length === 0) {
-        console.log("No transactions found for portfolioId:", portfolioId);
-        continue;
-      }
-
-      // Determine the start date (earliest transaction date)
-      const earliestTransactionDate = new Date(
-        Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
-      )
-        .toISOString()
-        .split("T")[0];
-      const endDate = getTodayDate();
-      const allDates = getDateRange(earliestTransactionDate, endDate);
-      console.log(
-        "Date range for portfolio",
-        portfolioId,
-        ":",
-        allDates.length,
-        "days",
-      );
-
-      // Fetch existing history for this portfolio
-      const existingHistory = await PortfolioHistory.find({
-        portfolio_id: portfolioId,
-      }).sort({ port_history_date: 1 });
-      const existingDates = new Set(
-        existingHistory.map(
-          (entry) => entry.port_history_date.toISOString().split("T")[0],
-        ),
-      );
-      const datesToCalculate = allDates.filter(
-        (date) => !existingDates.has(date),
-      );
-      console.log(
-        "Dates to calculate for portfolio",
-        portfolioId,
-        ":",
-        datesToCalculate.length,
-      );
-
-      if (datesToCalculate.length === 0) {
-        console.log("No missing days to calculate for portfolio:", portfolioId);
-        continue;
-      }
-
-      // Calculate and save history for this portfolio
-      const newHistory = await Promise.all(
-        datesToCalculate.map(async (date) => {
-          console.log("Processing date for portfolio", portfolioId, ":", date);
-          const holdings = await calculateStockHoldings(transactions, date);
-          console.log("Holdings calculated:", holdings);
-          const stockPrices = await getStockPrices(
-            holdings,
-            earliestTransactionDate,
-            endDate,
-          ); // Use range
-          console.log(
-            "Stock prices fetched for date range",
-            earliestTransactionDate,
-            "to",
-            endDate,
-            ":",
-            stockPrices[date] || "N/A",
-          );
-
-          const port_total_value = calculatePortfolioValue(
-            holdings,
-            stockPrices[date] || {},
-          );
-          console.log("Portfolio value for date", date, ":", port_total_value);
-
-          const newHistoryEntry = new PortfolioHistory({
-            portfolio_id: portfolioId,
-            port_history_date: new Date(date),
-            port_total_value,
-          });
-          await newHistoryEntry.save();
-          console.log(
-            "New history entry saved for portfolio",
-            portfolioId,
-            "date:",
-            date,
-          );
-          return newHistoryEntry;
-        }),
-      );
-
-      overallResult = overallResult.concat(newHistory);
-    }
-
-    return NextResponse.json(
-      {
-        message: "Portfolio history updated for all portfolios",
-        data: overallResult,
-      },
-      { status: 200 },
+    // Fetch transactions for the specific portfolio
+    const transactions: IExtendedTransaction[] = (await getTransactions(
+      portfolioId,
+    )) as IExtendedTransaction[];
+    console.log(
+      "Transactions fetched for portfolioId:",
+      portfolioId,
+      transactions.length,
     );
+
+    if (transactions.length === 0) {
+      return NextResponse.json({ data: [] }, { status: 200 });
+    }
+
+    // Determine the start date (earliest transaction date for this portfolio)
+    const earliestTransactionDate = new Date(
+      Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
+    )
+      .toISOString()
+      .split("T")[0];
+    const endDate = getTodayDate();
+    const allDates = getDateRange(earliestTransactionDate, endDate);
+
+    // Get existing dates to identify missing ones
+    const existingHistory = await PortfolioHistory.find({
+      portfolio_id: new Types.ObjectId(portfolioId),
+    }).sort({ port_history_date: 1 });
+    const existingDates = new Set(
+      existingHistory.map(
+        (entry) => entry.port_history_date.toISOString().split("T")[0],
+      ),
+    );
+    const missingDates = allDates.filter((date) => !existingDates.has(date));
+    console.log("Missing dates to process:", missingDates);
+
+    // Trigger POST to save missing history only if there are missing dates
+    if (missingDates.length > 0) {
+      console.log(
+        "Triggering individual-save for missing dates:",
+        missingDates,
+      );
+      const response = await fetch(
+        `${request.url.replace("/individual", "/individual-save")}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolio_id: portfolioId,
+            fromDate: earliestTransactionDate,
+            toDate: endDate,
+            forceUpdate: false,
+            userId,
+          }),
+        },
+      );
+
+      const saveResult = await response.json(); // Read body once
+      console.log("Individual-save response:", {
+        status: response.status,
+        result: saveResult,
+      });
+      if (!response.ok) {
+        console.error("Individual-save failed:", saveResult);
+        return NextResponse.json(
+          { error: "Failed to save portfolio history", details: saveResult },
+          { status: response.status },
+        );
+      }
+    } else {
+      console.log("No missing dates to calculate for portfolio:", portfolioId);
+    }
+
+    // Fetch updated history
+    const updatedHistory = await PortfolioHistory.find({
+      portfolio_id: new Types.ObjectId(portfolioId),
+    }).sort({ port_history_date: 1 });
+
+    // Aggregate history for the individual portfolio
+    const individualHistory: IndividualHistoryEntry[] = [];
+    const dateValues = new Map<string, number>();
+    updatedHistory.forEach((entry) => {
+      const dateStr = entry.port_history_date.toISOString().split("T")[0];
+      const currentValue = dateValues.get(dateStr) || 0;
+      dateValues.set(dateStr, currentValue + entry.port_total_value);
+    });
+
+    dateValues.forEach((totalValue, dateStr) => {
+      individualHistory.push({
+        portfolio_id: portfolioId,
+        port_history_date: new Date(dateStr),
+        port_total_value: totalValue,
+      });
+    });
+
+    // Sort by date
+    individualHistory.sort(
+      (a, b) =>
+        new Date(a.port_history_date).getTime() -
+        new Date(b.port_history_date).getTime(),
+    );
+
+    return NextResponse.json({ data: individualHistory }, { status: 200 });
   } catch (error) {
-    console.error("Error saving portfolio history for all users:" + error);
+    console.error("Error fetching individual portfolio history:", error);
     return NextResponse.json(
-      { message: "Internal Server Error" + error },
+      { message: "Internal Server Error" },
       { status: 500 },
     );
   }

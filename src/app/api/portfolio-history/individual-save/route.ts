@@ -19,7 +19,6 @@ export async function POST(request: Request) {
 
   try {
     const session = await getServerSession(authOptions);
-    console.log("Session from getServerSession:", { session });
 
     const {
       portfolio_id,
@@ -28,13 +27,6 @@ export async function POST(request: Request) {
       forceUpdate,
       userId: bodyUserId,
     } = await request.json();
-    console.log("Received request body:", {
-      portfolio_id,
-      fromDate,
-      toDate,
-      forceUpdate,
-      bodyUserId,
-    });
 
     if (!portfolio_id || !fromDate || !toDate) {
       return NextResponse.json(
@@ -44,7 +36,6 @@ export async function POST(request: Request) {
     }
 
     const userId = session?.user?.id || bodyUserId;
-    console.log("Using userId:", userId);
     if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized: No userId provided" },
@@ -68,7 +59,6 @@ export async function POST(request: Request) {
     const transactions = (await getTransactions(
       portfolio_id,
     )) as IExtendedTransaction[];
-    console.log("Transactions fetched:", transactions.length);
     if (transactions.length === 0) {
       return NextResponse.json(
         { message: "No transactions found" },
@@ -80,12 +70,7 @@ export async function POST(request: Request) {
     const today = getTodayDate();
     const adjustedToDate = toDate > today ? today : toDate;
     const allDates = getDateRange(fromDate, adjustedToDate);
-    console.log(
-      "Date range generated (capped at today):",
-      allDates.length,
-      "days",
-      { fromDate, toDate, adjustedToDate },
-    );
+    console.log("Generated allDates:", allDates); // Log to check for duplicates
 
     // Fetch existing individual history
     const existingHistory = await PortfolioHistory.find({
@@ -99,7 +84,7 @@ export async function POST(request: Request) {
     const datesToCalculate = forceUpdate
       ? allDates
       : allDates.filter((date) => !existingDates.has(date));
-    console.log("Dates to calculate:", datesToCalculate.length);
+    console.log("Dates to calculate:", datesToCalculate); // Log to check processed dates
 
     if (datesToCalculate.length === 0) {
       return NextResponse.json(
@@ -108,29 +93,43 @@ export async function POST(request: Request) {
       );
     }
 
+    // Ensure uniqueness in datesToCalculate
+    const uniqueDatesToCalculate = [...new Set(datesToCalculate)];
+    if (uniqueDatesToCalculate.length !== datesToCalculate.length) {
+      console.warn(
+        "Duplicate dates detected, using unique set:",
+        uniqueDatesToCalculate,
+      );
+    }
+
+    // Fetch prices for the entire date range once
+    const holdings = await calculateStockHoldings(transactions, fromDate);
+    const stockPrices = await getStockPrices(
+      holdings,
+      fromDate,
+      adjustedToDate,
+    );
+
     // Calculate and save individual history
     const newHistory = await Promise.all(
-      datesToCalculate.map(async (date) => {
-        console.log("Processing date:", date);
-        const holdings = await calculateStockHoldings(transactions, date);
-        console.log("Holdings calculated:", Object.keys(holdings).length);
-        const stockPrices = await getStockPrices(
-          holdings,
-          fromDate,
-          adjustedToDate,
-        ); // Use range
-        console.log(
-          "Stock prices fetched for date",
+      uniqueDatesToCalculate.map(async (date) => {
+        const holdingsForDate = await calculateStockHoldings(
+          transactions,
           date,
-          ":",
-          stockPrices[date] || "N/A",
         );
+        if (Object.keys(holdingsForDate).length === 0) {
+          return null;
+        }
+
+        const pricesForDate = stockPrices[date] || {};
+        if (Object.keys(pricesForDate).length === 0) {
+          return null;
+        }
 
         const port_total_value = calculatePortfolioValue(
-          holdings,
-          stockPrices[date] || {},
+          holdingsForDate,
+          pricesForDate,
         );
-        console.log("Portfolio value for date", date, ":", port_total_value);
 
         const existing = await PortfolioHistory.findOne({
           portfolio_id,
@@ -140,23 +139,25 @@ export async function POST(request: Request) {
           const newHistoryEntry = new PortfolioHistory({
             portfolio_id,
             port_history_date: new Date(date),
-            port_total_value,
+            port_total_value: port_total_value || 0,
           });
           await newHistoryEntry.save();
-          console.log("New history entry saved for date:", date);
           return newHistoryEntry;
         } else if (forceUpdate) {
-          existing.port_total_value = port_total_value;
+          existing.port_total_value = port_total_value || 0;
           await existing.save();
-          console.log("Existing entry updated for date:", date);
           return existing;
         }
         return existing;
       }),
     );
 
+    const validNewHistory = newHistory.filter((entry) => entry !== null);
     return NextResponse.json(
-      { message: "Individual portfolio history updated", data: newHistory },
+      {
+        message: "Individual portfolio history updated",
+        data: validNewHistory,
+      },
       { status: 200 },
     );
   } catch (error) {
