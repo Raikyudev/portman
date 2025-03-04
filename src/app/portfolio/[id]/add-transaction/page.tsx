@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
+import { getTodayDate } from "@/lib/utils";
 
 const transactionSchema = z.object({
   asset_id: z.string().min(1, "Please select a stock"),
@@ -171,7 +172,7 @@ export default function Page() {
           body: JSON.stringify({
             portfolio_id: portfolioId,
             fromDate: txDate,
-            toDate: txDate,
+            toDate: getTodayDate(),
             forceUpdate: true,
             userId: session?.user?.id,
           }),

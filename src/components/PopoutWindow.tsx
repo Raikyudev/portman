@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Button } from "@/components/ui/button"; // Import shadcn Button component
+import { Button } from "@/components/ui/button";
 
 interface PopoutWindowProps {
   isOpen: boolean;
@@ -25,12 +25,10 @@ export default function PopoutWindow({
         className="w-[50%] h-[80vh] relative z-50 bg-black p-8 rounded-lg border-4 border-red"
         onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
       >
-        <div className="flex justify-end">
-          {" "}
-          {/* Flex container for button with margin-bottom */}
+        <div className="flex justify-end mb-4">
           <Button
-            variant="ghost" // Use a ghost variant to match the minimal style
-            className="text-white hover:text-white text-2xl"
+            variant="ghost"
+            className="text-white hover:text-gray-300 text-2xl"
             onClick={onClose}
           >
             X

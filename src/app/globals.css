@@ -72,7 +72,7 @@ input {
         --accent-foreground: 210 20% 98%;
         --destructive: 0 62.8% 30.6%;
         --destructive-foreground: 210 20% 98%;
-        --border: 215 27.9% 16.9%;
+        --border: 348 91% 58%;
         --input: 215 27.9% 16.9%;
         --ring: 216 12.2% 83.9%;
         --chart-1: 220 70% 50%;
@@ -112,6 +112,18 @@ input {
     }
 }
 
+@layer components {
+    .no-border {
+        &,
+        & th,
+        & td {
+            border: none !important; /* Remove all borders */
+        }
+        & tr {
+            border-bottom: none !important; /* Ensure no bottom borders on rows */
+        }
+    }
+}
 
 .debug-overlay {
     border: 2px dashed red; /* Visible for debugging */

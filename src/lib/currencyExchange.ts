@@ -11,7 +11,7 @@ export async function getExchangeRate(currency1: string, currency2?: string) {
   const c1 = currency1.toUpperCase();
   const c2 = currency2 ? currency2.toUpperCase() : "USD";
 
-  const rates = await CurrencyRate.find({ currency: { $in: [c1, c2] } });
+  const rates = await CurrencyRate.find({ currency: { $in: [c1] } });
 
   if (rates.length !== (currency2 ? 2 : 1)) {
     throw new Error("One or both currency rates not found");

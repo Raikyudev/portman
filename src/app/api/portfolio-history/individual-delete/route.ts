@@ -37,22 +37,14 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Convert the input date to a start and end of day for range matching
+    // Convert the input date to the start of the specified day
     const [year, month, day] = dateStr.split("-");
     const startOfDay = new Date(
       Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0),
     );
-    const endOfDay = new Date(
-      Date.UTC(
-        parseInt(year),
-        parseInt(month) - 1,
-        parseInt(day),
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
+
+    // Set end date to today (including current time)
+    const endOfDay = new Date(); // Current date and time
 
     // Verify portfolio ownership
     const portfolio = await Portfolio.findOne({
@@ -67,7 +59,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Delete PortfolioHistory entries for the specified portfolio and date range
+    // Delete PortfolioHistory entries for the specified portfolio from startOfDay to today
     const deleteResult = await PortfolioHistory.deleteMany({
       portfolio_id: new Types.ObjectId(portfolioId),
       port_history_date: {
@@ -80,13 +72,17 @@ export async function DELETE(request: Request) {
 
     if (deleteResult.deletedCount === 0) {
       return NextResponse.json(
-        { message: "No history entries found for the specified date" },
+        {
+          message: "No history entries found from the specified date to today",
+        },
         { status: 200 },
       );
     }
 
     return NextResponse.json(
-      { message: `Deleted ${deleteResult.deletedCount} history entry(ies)` },
+      {
+        message: `Deleted ${deleteResult.deletedCount} history entry(ies) from ${dateStr} to today`,
+      },
       { status: 200 },
     );
   } catch (error) {
