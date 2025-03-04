@@ -10,6 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import PopoutWindow from "./PopoutWindow"; // Adjust path as needed
+import AllTransactions from "./AllTransactions"; // Adjust path as needed
 
 interface Transaction {
   date: string;
@@ -24,6 +27,7 @@ export default function RecentTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPopoutOpen, setIsPopoutOpen] = useState(false); // State to control PopoutWindow
 
   useEffect(() => {
     const fetchRecentTransactions = async () => {
@@ -61,10 +65,23 @@ export default function RecentTransactions() {
     fetchRecentTransactions();
   }, []);
 
+  // Handle PopoutWindow open
+  const openPopout = () => {
+    setIsPopoutOpen(true);
+  };
+
+  // Handle PopoutWindow close
+  const closePopout = () => {
+    setIsPopoutOpen(false);
+  };
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between p-6 space-y-0">
         <CardTitle>Recent Transactions</CardTitle>
+        <Button onClick={openPopout} variant="outline" size="sm">
+          View All Transactions
+        </Button>
       </CardHeader>
       <CardContent className="h-auto">
         {error && <div className="text-red-500 mb-4">{error}</div>}
@@ -102,6 +119,9 @@ export default function RecentTransactions() {
             </TableBody>
           </Table>
         )}
+        <PopoutWindow isOpen={isPopoutOpen} onClose={closePopout}>
+          <AllTransactions />
+        </PopoutWindow>
       </CardContent>
     </Card>
   );

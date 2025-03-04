@@ -7,8 +7,8 @@
     --black: 240 9% 11%;
     --white: 0 0% 100%;
     --gray: 0 0% 45%;
-    --red: 356 96% 45%;
-    --alt-red: 348 91% 58%;
+    --red: 348 91% 58%;
+    --alt-red: 356 96% 45%;
 /*
       --black: #1a1a1d;
       --white: #ffffff;
@@ -102,4 +102,17 @@ input {
     }
 
 
+}
+
+@layer utilities {
+    .bg-blur-overlay {
+        background-color: hsl(var(--black) / 0.2); /* 20% opacity of --black */
+        backdrop-filter: blur(4px); /* Blur effect */
+        -webkit-backdrop-filter: blur(4px); /* Safari fallback */
+    }
+}
+
+
+.debug-overlay {
+    border: 2px dashed red; /* Visible for debugging */
 }

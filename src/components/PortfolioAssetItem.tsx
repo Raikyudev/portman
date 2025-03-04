@@ -13,9 +13,7 @@ export default function PortfolioAssetItem({ asset }: PortfolioAssetItemProps) {
       <strong>{asset.asset_info.symbol}</strong> - {asset.asset_info.name}
       <br />
       <span>Quantity: {asset.quantity}</span> |{" "}
-      <span>
-        Avg Buy Price: {asset.avg_buy_price} ({asset.asset_info.currency})
-      </span>
+      <span>Avg Buy Price: {asset.avg_buy_price}</span>
       <WatchlistButton assetId={asset.asset_id.toString()} />
     </li>
   );

@@ -25,10 +25,7 @@ import {
 } from "recharts";
 import Watchlist from "@/components/Watchlist";
 import RecentTransactions from "@/components/RecentTransactions";
-
-const topHoldings = [
-  { name: "Apple Inc.", shares: 50, value: 11800, percentage: 10 },
-];
+import TopHoldings from "@/components/TopHoldings";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -58,25 +55,12 @@ export default function DashboardPage() {
 
     const fetchPortfolioHistory = async () => {
       try {
-        const userId = session.user.id;
-        console.log("Fetching aggregated history for userId:", userId);
         const response = await fetch(`/api/portfolio-history/aggregate`, {
           credentials: "include",
         });
-        console.log("Fetch response:", {
-          status: response.status,
-          statusText: response.statusText,
-        });
-        if (!response.ok) {
-          const data = await response.json();
-          console.error("Fetch failed:", {
-            status: response.status,
-            error: data.error || "Unknown error",
-          });
-        }
+        if (!response.ok) console.error("Failed to fetch portfolio history");
         const { data } = await response.json();
-        console.log("Fetched data:", data);
-        setPortfolioHistory(data);
+        setPortfolioHistory(data || []);
         setError(null);
 
         if (data.length > 0) {
@@ -104,27 +88,10 @@ export default function DashboardPage() {
         const response = await fetch("/api/market/top", {
           credentials: "include",
         });
-        console.log("Market API Response:", {
-          status: response.status,
-          statusText: response.statusText,
-        });
-        if (!response.ok) {
-          const data = await response.json();
-          console.error("Market API failed:", {
-            status: response.status,
-            error: data.error || "Unknown error",
-          });
-        }
-        const { topGainers, topLosers, gainersPeriod, losersPeriod } =
-          await response.json();
-        console.log("Market Data:", {
-          topGainers,
-          topLosers,
-          gainersPeriod,
-          losersPeriod,
-        });
-        setTopGainers(topGainers);
-        setTopLosers(topLosers);
+        if (!response.ok) console.error("Failed to fetch market data");
+        const { topGainers, topLosers } = await response.json();
+        setTopGainers(topGainers || []);
+        setTopLosers(topLosers || []);
       } catch (error) {
         console.error("Error in fetchMarketData:", error);
         setError(
@@ -133,8 +100,8 @@ export default function DashboardPage() {
       }
     };
 
-    fetchPortfolioHistory().then(() => {});
-    fetchMarketData().then(() => {});
+    fetchPortfolioHistory();
+    fetchMarketData();
   }, [status, session]);
 
   const chartData = portfolioHistory.map((entry) => ({
@@ -146,12 +113,11 @@ export default function DashboardPage() {
     <ProtectedLayout>
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-4">
-          Hi, {session?.user?.first_name || "User "} (All Portfolios)
+          Hi, {session?.user?.first_name || "User"} (All Portfolios)
         </h1>
         {error && <div className="text-red-500 mb-4">{error}</div>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 auto-rows-max">
           <Watchlist />
-
           <Card>
             <CardHeader>
               <CardTitle>Top Gainers Today</CardTitle>
@@ -183,7 +149,6 @@ export default function DashboardPage() {
               </Table>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Top Losers Today</CardTitle>
@@ -215,7 +180,6 @@ export default function DashboardPage() {
               </Table>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Total Portfolio Value</CardTitle>
@@ -274,37 +238,9 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <RecentTransactions />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Holdings</CardTitle>
-            </CardHeader>
-            <CardContent className="h-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Shares</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead>% of Portfolio</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topHoldings.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.shares}</TableCell>
-                      <TableCell>${item.value.toLocaleString()}</TableCell>
-                      <TableCell>{item.percentage}%</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <TopHoldings />
         </div>
       </div>
     </ProtectedLayout>
