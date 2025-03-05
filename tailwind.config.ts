@@ -18,6 +18,7 @@ export default {
         white: "hsl(var(--white))",
         gray: "hsl(var(--gray))",
         "alt-red": "hsl(var(--alt-red))",
+        "true-black": "hsl(var(--true-black))",
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",

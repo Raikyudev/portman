@@ -1,5 +1,4 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { SUPPORTED_CURRENCIES, Currency } from "@/lib/constants";
 
 export interface IAsset extends Document {
   _id: Schema.Types.ObjectId;
@@ -7,8 +6,6 @@ export interface IAsset extends Document {
   name: string;
   asset_type: string;
   price: number;
-  price_change_pct: number;
-  currency: Currency;
   market: string;
 }
 
@@ -29,15 +26,6 @@ const assetSchema: Schema = new mongoose.Schema({
   price: {
     type: Number,
     default: 0.0,
-  },
-  price_change_pct: {
-    type: Number,
-    default: 0.0,
-  },
-  currency: {
-    type: String,
-    enum: SUPPORTED_CURRENCIES,
-    required: true,
   },
   market: {
     type: String,

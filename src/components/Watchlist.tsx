@@ -93,7 +93,11 @@ export default function Watchlist() {
                 <TableRow key={index}>
                   <TableCell>{item.symbol}</TableCell>
                   <TableCell>${item.price.toLocaleString()}</TableCell>
-                  <TableCell>{item.change}</TableCell>
+                  <TableCell>
+                    {parseFloat(item.change) >= 0
+                      ? "+" + item.change
+                      : item.change}
+                  </TableCell>
                 </TableRow>
               ))
             ) : (

@@ -1,13 +1,12 @@
-// src/app/api/watchlist/route.ts
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongodb";
 import Watchlist from "@/models/Watchlist";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getStocksPriceForDay } from "@/lib/stockPrices"; // Adjust the import path
 import { Types } from "mongoose";
 import Asset from "@/models/Asset";
+import { getPriceChange } from "@/lib/stockPrices"; // Import the new function
 
 const watchlistSchema = z.object({
   asset_id: z.string().refine((id) => Types.ObjectId.isValid(id), {
@@ -16,8 +15,8 @@ const watchlistSchema = z.object({
 });
 
 interface WatchlistItem {
-  _id: string; // Add Watchlist document _id
-  asset_id: string; // Add asset_id reference
+  _id: string; // Watchlist document _id
+  asset_id: string; // asset_id reference
   symbol: string;
   price: number;
   change: string;
@@ -60,6 +59,18 @@ export async function GET() {
           _id: "$_id", // Include Watchlist _id
           asset_id: "$asset_id", // Include asset_id
           symbol: { $ifNull: ["$asset.symbol", null] }, // Retain symbol
+          price: { $ifNull: ["$asset.price", 0] }, // Include current price from Asset
+          // Replace price_change_pct with dynamic getPriceChange
+          change: {
+            $concat: [
+              {
+                $toString: {
+                  $ifNull: [{ $round: ["$asset.price_change_pct", 2] }, 0],
+                },
+              },
+              "%",
+            ],
+          },
         },
       },
     ]).exec();
@@ -71,47 +82,20 @@ export async function GET() {
       return NextResponse.json([], { status: 200 });
     }
 
-    const symbols = userWatchlist
-      .map((item) =>
-        item.symbol && typeof item.symbol === "string" ? item.symbol : null,
-      )
-      .filter((symbol): symbol is string => symbol !== null);
-
-    if (symbols.length === 0) {
-      console.warn("No valid symbols found in watchlist after filtering");
-      return NextResponse.json([], { status: 200 });
-    }
-
-    const holdings = symbols.reduce(
-      (acc, symbol) => ({ ...acc, [symbol]: 1 }),
-      {},
+    // Fetch dynamic price changes for each symbol
+    const watchlistData: WatchlistItem[] = await Promise.all(
+      userWatchlist.map(async (item) => {
+        const changePercent = await getPriceChange(item.symbol || "");
+        const formattedChange = `${changePercent.toFixed(2)}%`;
+        return {
+          _id: item._id.toString(),
+          asset_id: item.asset_id.toString(),
+          symbol: item.symbol || "",
+          price: item.price || 0,
+          change: formattedChange,
+        };
+      }),
     );
-
-    const currentDate = new Date().toISOString().split("T")[0];
-    const currentPrices = await getStocksPriceForDay(holdings, currentDate);
-
-    const previousDay = new Date();
-    previousDay.setDate(previousDay.getDate() - 1);
-    const previousPrices = await getStocksPriceForDay(
-      holdings,
-      previousDay.toISOString().split("T")[0],
-    );
-
-    const watchlistData: WatchlistItem[] = userWatchlist.map((item) => {
-      const symbol = item.symbol || "";
-      const currentPrice = currentPrices[symbol] || 0;
-      const prevPrice = previousPrices[symbol] || currentPrice || 1; // Avoid division by zero
-      const changePercent = ((currentPrice - prevPrice) / prevPrice) * 100;
-      const change = `${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(2)}%`;
-
-      return {
-        _id: item._id.toString(),
-        asset_id: item.asset_id.toString(),
-        symbol,
-        price: currentPrice,
-        change,
-      };
-    });
 
     return NextResponse.json(watchlistData);
   } catch (error) {

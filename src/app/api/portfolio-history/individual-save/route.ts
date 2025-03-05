@@ -1,7 +1,6 @@
-// pages/api/portfolio-history/individual-save.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
-import PortfolioHistory from "@/models/PortfolioHistory";
+import PortfolioHistory, { IPortfolioHistory } from "@/models/PortfolioHistory";
 import {
   calculateStockHoldings,
   calculatePortfolioValue,
@@ -102,66 +101,154 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch prices for the entire date range once
-    const holdings = await calculateStockHoldings(transactions, fromDate);
-    const stockPrices = await getStockPrices(
-      holdings,
-      fromDate,
-      adjustedToDate,
+    // Initial fetch for all unique symbols in transactions
+    const symbolEarliestDates = transactions.reduce(
+      (acc, tx) => {
+        const symbol = tx.asset_details.symbol;
+        const txDate = new Date(tx.tx_date).toISOString().split("T")[0];
+        if (!acc[symbol] || txDate < acc[symbol]) {
+          acc[symbol] = txDate;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
     );
+    console.log("Earliest transaction dates by symbol:", symbolEarliestDates);
 
-    // Calculate and save individual history
-    const newHistory = await Promise.all(
-      uniqueDatesToCalculate.map(async (date) => {
-        const holdingsForDate = await calculateStockHoldings(
-          transactions,
-          date,
+    const uniqueSymbols = new Set(
+      transactions.map((tx) => tx.asset_details.symbol),
+    );
+    const stockPrices: Record<string, Record<string, number>> = {};
+    for (const symbol of uniqueSymbols) {
+      const startDate = symbolEarliestDates[symbol] || fromDate;
+      console.log(
+        `Initial fetch for ${symbol} from ${startDate} to ${adjustedToDate}...`,
+      );
+      try {
+        const newPrices = await getStockPrices(
+          { [symbol]: 0 },
+          startDate,
+          adjustedToDate,
         );
-        if (Object.keys(holdingsForDate).length === 0) {
-          return null;
+        for (const [newDate, prices] of Object.entries(newPrices)) {
+          stockPrices[newDate] = stockPrices[newDate] || {};
+          stockPrices[newDate][symbol] = prices[symbol] || 0;
+          console.log(
+            `Initial price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
+          );
         }
+      } catch (error) {
+        console.error(`Error fetching initial prices for ${symbol}:`, error);
+      }
+    }
 
-        const pricesForDate = stockPrices[date] || {};
-        if (Object.keys(pricesForDate).length === 0) {
-          return null;
+    // Process dates sequentially to avoid race conditions
+    const newHistory: IPortfolioHistory[] = [];
+    for (const date of uniqueDatesToCalculate) {
+      console.log("Processing date for portfolio", portfolio_id, ":", date);
+      const holdingsForDate = await calculateStockHoldings(transactions, date);
+      console.log("Holdings calculated for date:", {
+        date,
+        holdings: holdingsForDate,
+      });
+
+      if (Object.keys(holdingsForDate).length === 0) {
+        console.log("No holdings found for date, skipping:", date);
+        continue;
+      }
+
+      const symbolsToPrice = Object.keys(holdingsForDate);
+      const missingSymbols = symbolsToPrice.filter(
+        (symbol) =>
+          !stockPrices[date] ||
+          !stockPrices[date].hasOwnProperty(symbol) ||
+          stockPrices[date][symbol] === 0,
+      );
+      console.log("Missing symbols for", date, ":", missingSymbols);
+
+      if (missingSymbols.length > 0) {
+        for (const symbol of missingSymbols) {
+          const startDateForSymbol = symbolEarliestDates[symbol] || fromDate;
+          console.log(
+            `Fetching prices for ${symbol} from ${startDateForSymbol} to ${date}...`,
+          );
+          try {
+            const newPrices = await getStockPrices(
+              { [symbol]: holdingsForDate[symbol] },
+              startDateForSymbol,
+              date,
+            );
+            for (const [newDate, prices] of Object.entries(newPrices)) {
+              stockPrices[newDate] = stockPrices[newDate] || {};
+              stockPrices[newDate][symbol] = prices[symbol] || 0;
+              console.log(
+                `Updated price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
+              );
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching prices for ${symbol} on ${date}:`,
+              error,
+            );
+          }
         }
+      }
 
-        const port_total_value = calculatePortfolioValue(
-          holdingsForDate,
-          pricesForDate,
+      const pricesForDate = stockPrices[date] || {};
+      console.log("Stock prices for", date, ":", pricesForDate);
+
+      if (Object.keys(pricesForDate).length === 0) {
+        console.log("No prices available for date, skipping:", date);
+        continue;
+      }
+
+      const missingPricesForDate = symbolsToPrice.filter(
+        (symbol) =>
+          !pricesForDate.hasOwnProperty(symbol) || pricesForDate[symbol] === 0,
+      );
+      if (missingPricesForDate.length > 0) {
+        console.warn(
+          `Missing or zero prices for symbols on ${date}:`,
+          missingPricesForDate,
         );
+      }
 
-        const existing = await PortfolioHistory.findOne({
+      const port_total_value = calculatePortfolioValue(
+        holdingsForDate,
+        pricesForDate,
+      );
+      console.log("Portfolio value for date", date, ":", port_total_value);
+
+      const existing = await PortfolioHistory.findOne({
+        portfolio_id,
+        port_history_date: new Date(date),
+      });
+      if (!existing) {
+        const newHistoryEntry = new PortfolioHistory({
           portfolio_id,
           port_history_date: new Date(date),
+          port_total_value: port_total_value || 0,
         });
-        if (!existing) {
-          const newHistoryEntry = new PortfolioHistory({
-            portfolio_id,
-            port_history_date: new Date(date),
-            port_total_value: port_total_value || 0,
-          });
-          await newHistoryEntry.save();
-          return newHistoryEntry;
-        } else if (forceUpdate) {
-          existing.port_total_value = port_total_value || 0;
-          await existing.save();
-          return existing;
-        }
-        return existing;
-      }),
-    );
+        await newHistoryEntry.save();
+        console.log("New history entry saved for date:", date);
+        newHistory.push(newHistoryEntry);
+      } else if (forceUpdate) {
+        existing.port_total_value = port_total_value || 0;
+        await existing.save();
+        console.log("Existing entry updated for date:", date);
+        newHistory.push(existing);
+      }
+    }
 
-    const validNewHistory = newHistory.filter((entry) => entry !== null);
     return NextResponse.json(
       {
         message: "Individual portfolio history updated",
-        data: validNewHistory,
+        data: newHistory,
       },
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error saving individual portfolio history:" + error);
+    console.error("Error saving individual portfolio history:", error);
     return NextResponse.json(
       { message: "Internal Server Error" + error },
       { status: 500 },

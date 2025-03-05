@@ -1,4 +1,3 @@
-// pages/api/portfolio-history/all-users.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory, { IPortfolioHistory } from "@/models/PortfolioHistory";
@@ -19,7 +18,6 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
-    // Extract API key from headers
     const apiKey =
       request.headers.get("Authorization")?.replace("Bearer ", "") || "";
     const expectedApiKey = process.env.PORT_HISTORY_KEY;
@@ -35,7 +33,6 @@ export async function POST(request: Request) {
 
     console.log("API key validated successfully");
 
-    // Fetch all portfolios
     const portfolios = await Portfolio.find({}).select("_id user_id");
     console.log("Total portfolios fetched:", portfolios.length);
     if (!portfolios || portfolios.length === 0) {
@@ -49,12 +46,10 @@ export async function POST(request: Request) {
 
     let overallResult: IPortfolioHistory[] = [];
 
-    // Process each portfolio
     for (const portfolio of portfolios) {
       const portfolioId = portfolio._id.toString();
       console.log("Processing history for portfolioId:", portfolioId);
 
-      // Fetch transactions for this portfolio
       const transactions = (await getTransactions(
         portfolioId,
       )) as IExtendedTransaction[];
@@ -64,7 +59,8 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Determine the start date (earliest transaction date)
+      console.log("Transactions fetched:", transactions.length, transactions);
+
       const earliestTransactionDate = new Date(
         Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
       )
@@ -78,9 +74,9 @@ export async function POST(request: Request) {
         ":",
         allDates.length,
         "days",
+        allDates,
       );
 
-      // Fetch existing history for this portfolio
       const existingHistory = await PortfolioHistory.find({
         portfolio_id: portfolioId,
       }).sort({ port_history_date: 1 });
@@ -97,6 +93,7 @@ export async function POST(request: Request) {
         portfolioId,
         ":",
         datesToCalculate.length,
+        datesToCalculate,
       );
 
       if (datesToCalculate.length === 0) {
@@ -104,32 +101,49 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Fetch prices for the entire date range once per portfolio
-      const holdings = await calculateStockHoldings(
-        transactions,
-        earliestTransactionDate,
+      const symbolEarliestDates = transactions.reduce(
+        (acc, tx) => {
+          const symbol = tx.asset_details.symbol;
+          const txDate = new Date(tx.tx_date).toISOString().split("T")[0];
+          if (!acc[symbol] || txDate < acc[symbol]) {
+            acc[symbol] = txDate;
+          }
+          return acc;
+        },
+        {} as Record<string, string>,
       );
-      console.log(
-        "Holdings calculated for portfolio",
-        portfolioId,
-        ":",
-        holdings,
-      );
-      const stockPrices = await getStockPrices(
-        holdings,
-        earliestTransactionDate,
-        endDate,
-      );
-      console.log(
-        "Stock prices fetched for date range",
-        earliestTransactionDate,
-        "to",
-        endDate,
-        ":",
-        stockPrices,
-      );
+      console.log("Earliest transaction dates by symbol:", symbolEarliestDates);
 
-      // Calculate and save individual history
+      // Initial fetch for all unique symbols
+      const uniqueSymbols = new Set(
+        transactions.map((tx) => tx.asset_details.symbol),
+      );
+      const stockPrices: Record<string, Record<string, number>> = {};
+      for (const symbol of uniqueSymbols) {
+        const startDate =
+          symbolEarliestDates[symbol] || earliestTransactionDate;
+        console.log(
+          `Initial fetch for ${symbol} from ${startDate} to ${endDate}...`,
+        );
+        try {
+          const newPrices = await getStockPrices(
+            { [symbol]: 0 },
+            startDate,
+            endDate,
+          );
+          for (const [newDate, prices] of Object.entries(newPrices)) {
+            stockPrices[newDate] = stockPrices[newDate] || {};
+            stockPrices[newDate][symbol] = prices[symbol] || 0;
+            console.log(
+              `Initial price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
+            );
+          }
+        } catch (error) {
+          console.error(`Error fetching initial prices for ${symbol}:`, error);
+        }
+      }
+
+      // Process each date using cached prices
       const newHistory = await Promise.all(
         datesToCalculate.map(async (date) => {
           console.log("Processing date for portfolio", portfolioId, ":", date);
@@ -137,32 +151,85 @@ export async function POST(request: Request) {
             transactions,
             date,
           );
-          console.log("Holdings calculated for date:", {
-            date,
-            holdings: holdingsForDate,
-          });
+          console.log("Holdings for date", date, ":", holdingsForDate);
 
           if (Object.keys(holdingsForDate).length === 0) {
             console.log("No holdings found for date, skipping:", date);
             return null;
           }
 
+          const symbolsToPrice = Object.keys(holdingsForDate);
+          const missingSymbols = symbolsToPrice.filter(
+            (symbol) =>
+              !stockPrices[date] ||
+              !stockPrices[date].hasOwnProperty(symbol) ||
+              stockPrices[date][symbol] === 0,
+          );
+          console.log("Missing symbols for", date, ":", missingSymbols);
+
+          if (missingSymbols.length > 0) {
+            for (const symbol of missingSymbols) {
+              const startDateForSymbol =
+                symbolEarliestDates[symbol] || earliestTransactionDate;
+              console.log(
+                `Fetching prices for ${symbol} from ${startDateForSymbol} to ${date}...`,
+              );
+              try {
+                const newPrices = await getStockPrices(
+                  { [symbol]: holdingsForDate[symbol] },
+                  startDateForSymbol,
+                  date,
+                );
+                for (const [newDate, prices] of Object.entries(newPrices)) {
+                  stockPrices[newDate] = stockPrices[newDate] || {};
+                  stockPrices[newDate][symbol] = prices[symbol] || 0;
+                  console.log(
+                    `Updated price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  `Error fetching prices for ${symbol} on ${date}:`,
+                  error,
+                );
+              }
+            }
+          }
+
           const pricesForDate = stockPrices[date] || {};
-          console.log("Prices fetched for date:", {
-            date,
-            prices: pricesForDate,
-          });
+          console.log("Stock prices for", date, ":", pricesForDate);
 
           if (Object.keys(pricesForDate).length === 0) {
             console.log("No prices available for date, skipping:", date);
             return null;
           }
 
+          const missingPricesForDate = symbolsToPrice.filter(
+            (symbol) =>
+              !pricesForDate.hasOwnProperty(symbol) ||
+              pricesForDate[symbol] === 0,
+          );
+          if (missingPricesForDate.length > 0) {
+            console.warn(
+              `Missing or zero prices for symbols on ${date}:`,
+              missingPricesForDate,
+            );
+          }
+
           const port_total_value = calculatePortfolioValue(
             holdingsForDate,
             pricesForDate,
           );
-          console.log("Portfolio value for date", date, ":", port_total_value);
+          console.log(
+            "Calculated portfolio value for",
+            date,
+            ":",
+            port_total_value,
+            "with holdings:",
+            holdingsForDate,
+            "and prices:",
+            pricesForDate,
+          );
 
           const newHistoryEntry = new PortfolioHistory({
             portfolio_id: portfolioId,
@@ -175,6 +242,8 @@ export async function POST(request: Request) {
             portfolioId,
             "date:",
             date,
+            "value:",
+            port_total_value,
           );
           return newHistoryEntry;
         }),
@@ -193,7 +262,7 @@ export async function POST(request: Request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error saving portfolio history for all users:" + error);
+    console.error("Error saving portfolio history for all users:", error);
     return NextResponse.json(
       { message: "Internal Server Error" + error },
       { status: 500 },

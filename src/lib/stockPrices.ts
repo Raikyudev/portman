@@ -12,32 +12,44 @@ export async function getStockPrices(
   const adjustedEndDate = adjustDateToValidRange(endDate, currentDate);
   const dateRange = getDateRange(adjustedStartDate, adjustedEndDate);
 
-  await Promise.all(
-    Object.keys(holdings).map(async (symbol) => {
-      try {
-        const period1 = new Date(adjustedStartDate);
-        const period2 = new Date(adjustedEndDate);
-        if (
-          period1.toISOString().split("T")[0] ===
-          period2.toISOString().split("T")[0]
-        ) {
-          period2.setDate(period2.getDate() + 1);
-        }
-        const result = await yahooFinance.chart(symbol, {
-          period1: period1,
-          period2: period2,
-          interval: "1d",
-          return: "array",
-        });
+  if (!holdings || Object.keys(holdings).length === 0) {
+    return stockPrices;
+  }
 
-        if (!result.quotes || result.quotes.length === 0) {
-          for (const date of dateRange) {
-            stockPrices[date] = stockPrices[date] || {};
-            stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
-          }
-          return;
-        }
+  const symbols = Object.keys(holdings);
+  console.log("Fetching prices for symbols:", symbols);
 
+  // Sequential fetching to avoid rate limits
+  for (const symbol of symbols) {
+    console.log(`Processing symbol: ${symbol}`);
+    try {
+      const period1 = new Date(adjustedStartDate);
+      const period2 = new Date(adjustedEndDate);
+      if (
+        period1.toISOString().split("T")[0] ===
+        period2.toISOString().split("T")[0]
+      ) {
+        period2.setDate(period2.getDate() + 1);
+      }
+      console.log(
+        `Fetching chart data for ${symbol} from ${adjustedStartDate} to ${adjustedEndDate}...`,
+      );
+      const result = await yahooFinance.chart(symbol, {
+        period1: period1,
+        period2: period2,
+        interval: "1d",
+        return: "array",
+      });
+
+      if (!result.quotes || result.quotes.length === 0) {
+        console.warn(
+          `No quotes found for ${symbol}, using fallback for all dates`,
+        );
+        for (const date of dateRange) {
+          stockPrices[date] = stockPrices[date] || {};
+          stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
+        }
+      } else {
         const priceMap: Record<string, { open: number; close: number }> = {};
         result.quotes.forEach((quote) => {
           const dateStr = quote.date.toISOString().split("T")[0];
@@ -54,22 +66,30 @@ export async function getStockPrices(
           const priceData = priceMap[date] || { open: 0, close: 0 };
           let price = Math.max(priceData.open, priceData.close);
           if (price === 0) {
+            console.warn(`Zero price for ${symbol} on ${date}, using fallback`);
             price = await fetchPriceForDay(symbol, date, priceMap);
           }
           stockPrices[date][symbol] =
             price > 0
               ? price
               : await getClosestPreviousPrice(symbol, date, priceMap);
-        }
-      } catch (error) {
-        console.error(`Error fetching chart data for ${symbol}:`, error);
-        for (const date of dateRange) {
-          stockPrices[date] = stockPrices[date] || {};
-          stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
+          console.log(
+            `Price for ${symbol} on ${date}: ${stockPrices[date][symbol]}`,
+          );
         }
       }
-    }),
-  );
+    } catch (error) {
+      console.error(`Error fetching chart data for ${symbol}:`, error);
+      for (const date of dateRange) {
+        stockPrices[date] = stockPrices[date] || {};
+        stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
+        console.log(
+          `Fallback price for ${symbol} on ${date}: ${stockPrices[date][symbol]}`,
+        );
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay to respect API limits
+  }
 
   return stockPrices;
 }
@@ -193,6 +213,27 @@ export async function getClosestPreviousPrice(
     }
   }
   return 0;
+}
+
+export async function getPriceChange(symbol: string): Promise<number> {
+  try {
+    console.log(`Fetching price change for symbol: ${symbol}`);
+    const quote = await yahooFinance.quote(symbol);
+    if (quote.regularMarketChangePercent) {
+      console.log(
+        `Price change for ${symbol}: ${quote.regularMarketChangePercent}%`,
+      );
+      return quote.regularMarketChangePercent;
+    } else {
+      console.warn(
+        `No regularMarketChangePercent available for ${symbol}, returning 0`,
+      );
+      return 0;
+    }
+  } catch (error) {
+    console.error(`Error fetching price change for ${symbol}:`, error);
+    return 0;
+  }
 }
 
 function adjustDateToValidRange(dateStr: string, currentDate: string): string {

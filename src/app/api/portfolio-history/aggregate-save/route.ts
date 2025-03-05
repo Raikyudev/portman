@@ -1,4 +1,3 @@
-// pages/api/portfolio-history/aggregate-save.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory, { IPortfolioHistory } from "@/models/PortfolioHistory";
@@ -62,14 +61,91 @@ export async function POST(request: Request) {
     const today = getTodayDate();
     const adjustedToDate = toDate > today ? today : toDate;
 
-    let overallResult: IPortfolioHistory[] = [];
+    const overallResult: IPortfolioHistory[] = [];
+
+    // Collect all transactions for the user across all portfolios
+    const allTransactions: IExtendedTransaction[] = [];
+    for (const portfolio of portfolios) {
+      const portfolioId = portfolio._id.toString();
+      const transactions = await getTransactions(portfolioId);
+      allTransactions.push(...transactions);
+    }
+    console.log("All transactions fetched:", allTransactions.length);
+
+    if (allTransactions.length === 0) {
+      console.log("No transactions found for user:", userId);
+      return NextResponse.json(
+        { message: "No transactions found for user" },
+        { status: 404 },
+      );
+    }
+
+    // Determine the effective start date (earliest transaction or fromDate)
+    const earliestTransactionDate = new Date(
+      Math.min(...allTransactions.map((tx) => new Date(tx.tx_date).getTime())),
+    )
+      .toISOString()
+      .split("T")[0];
+    const effectiveFromDate =
+      fromDate < earliestTransactionDate ? earliestTransactionDate : fromDate;
+    console.log("Effective date range for user:", {
+      effectiveFromDate,
+      adjustedToDate,
+    });
+
+    const allDates = getDateRange(effectiveFromDate, adjustedToDate);
+    console.log(
+      "Date range generated (capped at today):",
+      allDates.length,
+      "days",
+    );
+
+    // Initial fetch for all unique symbols across all portfolios
+    const symbolEarliestDates = allTransactions.reduce(
+      (acc, tx) => {
+        const symbol = tx.asset_details.symbol;
+        const txDate = new Date(tx.tx_date).toISOString().split("T")[0];
+        if (!acc[symbol] || txDate < acc[symbol]) {
+          acc[symbol] = txDate;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+    console.log("Earliest transaction dates by symbol:", symbolEarliestDates);
+
+    const uniqueSymbols = new Set(
+      allTransactions.map((tx) => tx.asset_details.symbol),
+    );
+    const stockPrices: Record<string, Record<string, number>> = {};
+    for (const symbol of uniqueSymbols) {
+      const startDate = symbolEarliestDates[symbol] || effectiveFromDate;
+      console.log(
+        `Initial fetch for ${symbol} from ${startDate} to ${adjustedToDate}...`,
+      );
+      try {
+        const newPrices = await getStockPrices(
+          { [symbol]: 0 },
+          startDate,
+          adjustedToDate,
+        );
+        for (const [newDate, prices] of Object.entries(newPrices)) {
+          stockPrices[newDate] = stockPrices[newDate] || {};
+          stockPrices[newDate][symbol] = prices[symbol] || 0;
+          console.log(
+            `Initial price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
+          );
+        }
+      } catch (error) {
+        console.error(`Error fetching initial prices for ${symbol}:`, error);
+      }
+    }
 
     // Process each portfolio
     for (const portfolio of portfolios) {
       const portfolioId = portfolio._id.toString();
       console.log("Processing portfolio:", portfolioId);
 
-      // Fetch transactions for this portfolio
       const transactions = (await getTransactions(
         portfolioId,
       )) as IExtendedTransaction[];
@@ -83,29 +159,6 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Determine the effective start date (earliest transaction or fromDate)
-      const earliestTransactionDate = new Date(
-        Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
-      )
-        .toISOString()
-        .split("T")[0];
-      const effectiveFromDate =
-        fromDate < earliestTransactionDate ? earliestTransactionDate : fromDate;
-      console.log("Effective date range for portfolio", portfolioId, ":", {
-        effectiveFromDate,
-        adjustedToDate,
-      });
-
-      const allDates = getDateRange(effectiveFromDate, adjustedToDate);
-      console.log(
-        "Date range generated (capped at today) for portfolio",
-        portfolioId,
-        ":",
-        allDates.length,
-        "days",
-      );
-
-      // Fetch existing history for this portfolio
       const existingHistory = await PortfolioHistory.find({
         portfolio_id: portfolioId,
       }).sort({ port_history_date: 1 });
@@ -129,92 +182,119 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Fetch prices for the entire date range once per portfolio
-      const holdings = await calculateStockHoldings(
-        transactions,
-        effectiveFromDate,
-      );
-      console.log(
-        "Holdings calculated for portfolio",
-        portfolioId,
-        ":",
-        holdings,
-      );
-      const stockPrices = await getStockPrices(
-        holdings,
-        effectiveFromDate,
-        adjustedToDate,
-      );
-      console.log(
-        "Stock prices fetched for date range",
-        effectiveFromDate,
-        "to",
-        adjustedToDate,
-        ":",
-        stockPrices,
-      );
-
-      // Calculate and save individual history
-      const newHistory = await Promise.all(
-        datesToCalculate.map(async (date) => {
-          console.log("Processing date for portfolio", portfolioId, ":", date);
-          const holdingsForDate = await calculateStockHoldings(
-            transactions,
-            date,
-          );
-          console.log("Holdings calculated for date:", {
-            date,
-            holdings: holdingsForDate,
-          });
-
-          if (Object.keys(holdingsForDate).length === 0) {
-            console.log("No holdings found for date, skipping:", date);
-            return null;
+      const symbolEarliestDates = transactions.reduce(
+        (acc, tx) => {
+          const symbol = tx.asset_details.symbol;
+          const txDate = new Date(tx.tx_date).toISOString().split("T")[0];
+          if (!acc[symbol] || txDate < acc[symbol]) {
+            acc[symbol] = txDate;
           }
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
 
-          const pricesForDate = stockPrices[date] || {};
-          console.log("Prices fetched for date:", {
-            date,
-            prices: pricesForDate,
-          });
+      // Process dates sequentially to avoid race conditions
+      for (const date of datesToCalculate) {
+        console.log("Processing date for portfolio", portfolioId, ":", date);
+        const holdingsForDate = await calculateStockHoldings(
+          transactions,
+          date,
+        );
+        console.log("Holdings calculated for date:", {
+          date,
+          holdings: holdingsForDate,
+        });
 
-          if (Object.keys(pricesForDate).length === 0) {
-            console.log("No prices available for date, skipping:", date);
-            return null;
+        if (Object.keys(holdingsForDate).length === 0) {
+          console.log("No holdings found for date, skipping:", date);
+          continue;
+        }
+
+        const symbolsToPrice = Object.keys(holdingsForDate);
+        const missingSymbols = symbolsToPrice.filter(
+          (symbol) =>
+            !stockPrices[date] ||
+            !stockPrices[date].hasOwnProperty(symbol) ||
+            stockPrices[date][symbol] === 0,
+        );
+        console.log("Missing symbols for", date, ":", missingSymbols);
+
+        if (missingSymbols.length > 0) {
+          for (const symbol of missingSymbols) {
+            const startDateForSymbol =
+              symbolEarliestDates[symbol] || effectiveFromDate;
+            console.log(
+              `Fetching prices for ${symbol} from ${startDateForSymbol} to ${date}...`,
+            );
+            try {
+              const newPrices = await getStockPrices(
+                { [symbol]: holdingsForDate[symbol] },
+                startDateForSymbol,
+                date,
+              );
+              for (const [newDate, prices] of Object.entries(newPrices)) {
+                stockPrices[newDate] = stockPrices[newDate] || {};
+                stockPrices[newDate][symbol] = prices[symbol] || 0;
+                console.log(
+                  `Updated price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
+                );
+              }
+            } catch (error) {
+              console.error(
+                `Error fetching prices for ${symbol} on ${date}:`,
+                error,
+              );
+            }
           }
+        }
 
-          const port_total_value = calculatePortfolioValue(
-            holdingsForDate,
-            pricesForDate,
+        const pricesForDate = stockPrices[date] || {};
+        console.log("Stock prices for", date, ":", pricesForDate);
+
+        if (Object.keys(pricesForDate).length === 0) {
+          console.log("No prices available for date, skipping:", date);
+          continue;
+        }
+
+        const missingPricesForDate = symbolsToPrice.filter(
+          (symbol) =>
+            !pricesForDate.hasOwnProperty(symbol) ||
+            pricesForDate[symbol] === 0,
+        );
+        if (missingPricesForDate.length > 0) {
+          console.warn(
+            `Missing or zero prices for symbols on ${date}:`,
+            missingPricesForDate,
           );
-          console.log("Portfolio value for date", date, ":", port_total_value);
+        }
 
-          const existing = await PortfolioHistory.findOne({
+        const port_total_value = calculatePortfolioValue(
+          holdingsForDate,
+          pricesForDate,
+        );
+        console.log("Portfolio value for date", date, ":", port_total_value);
+
+        const existing = await PortfolioHistory.findOne({
+          portfolio_id: portfolioId,
+          port_history_date: new Date(date),
+        });
+        if (!existing) {
+          const newHistoryEntry = new PortfolioHistory({
             portfolio_id: portfolioId,
             port_history_date: new Date(date),
+            port_total_value: port_total_value || 0,
           });
-          if (!existing) {
-            const newHistoryEntry = new PortfolioHistory({
-              portfolio_id: portfolioId,
-              port_history_date: new Date(date),
-              port_total_value: port_total_value || 0,
-            });
-            await newHistoryEntry.save();
-            console.log("New history entry saved for date:", date);
-            return newHistoryEntry;
-          } else if (forceUpdate) {
-            existing.port_total_value = port_total_value || 0;
-            await existing.save();
-            console.log("Existing entry updated for date:", date);
-            return existing;
-          }
-          return existing;
-        }),
-      );
-
-      overallResult = overallResult.concat(
-        newHistory.filter((entry) => entry !== null),
-      );
+          await newHistoryEntry.save();
+          console.log("New history entry saved for date:", date);
+          overallResult.push(newHistoryEntry);
+        } else if (forceUpdate) {
+          existing.port_total_value = port_total_value || 0;
+          await existing.save();
+          console.log("Existing entry updated for date:", date);
+          overallResult.push(existing);
+        }
+      }
     }
 
     return NextResponse.json(
@@ -225,7 +305,7 @@ export async function POST(request: Request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error saving aggregated portfolio history:" + error);
+    console.error("Error saving aggregated portfolio history:", error);
     return NextResponse.json(
       { message: "Internal Server Error" + error },
       { status: 500 },

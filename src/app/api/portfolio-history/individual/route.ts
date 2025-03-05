@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     const userId = session.user.id;
     const { searchParams } = new URL(request.url);
     const portfolioId = searchParams.get("portfolio_id");
+    const range = searchParams.get("range"); // undefined if not provided
 
     if (!portfolioId || !Types.ObjectId.isValid(portfolioId)) {
       return NextResponse.json(
@@ -64,16 +65,73 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: [] }, { status: 200 });
     }
 
-    // Determine the start date (earliest transaction date for this portfolio)
+    // Determine the start date (earliest transaction date for this specific portfolio)
     const earliestTransactionDate = new Date(
       Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
     )
       .toISOString()
       .split("T")[0];
     const endDate = getTodayDate();
-    const allDates = getDateRange(earliestTransactionDate, endDate);
 
-    // Get existing dates to identify missing ones
+    // Calculate the range start date based on the range parameter, or use earliestTransactionDate if undefined
+    let rangeStartDate: string;
+    if (range) {
+      const today = new Date(endDate);
+      switch (range.toUpperCase()) {
+        case "W":
+          rangeStartDate = new Date(today.setDate(today.getDate() - 7))
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "M":
+          rangeStartDate = new Date(today.setMonth(today.getMonth() - 1))
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "YTD":
+          rangeStartDate = new Date(today.getFullYear(), 0, 1)
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "Y":
+          rangeStartDate = new Date(today.setFullYear(today.getFullYear() - 1))
+            .toISOString()
+            .split("T")[0];
+          break;
+        default:
+          rangeStartDate = earliestTransactionDate; // Fallback to portfolio's earliest date for invalid range
+      }
+    } else {
+      rangeStartDate = earliestTransactionDate; // Use this portfolio's earliest transaction date if no range
+    }
+
+    // Use the maximum of rangeStartDate and earliestTransactionDate only when range is defined
+    const effectiveStartDate = range
+      ? new Date(
+          Math.max(
+            new Date(rangeStartDate).getTime(),
+            new Date(earliestTransactionDate).getTime(),
+          ),
+        )
+          .toISOString()
+          .split("T")[0]
+      : earliestTransactionDate;
+    console.log(
+      "Effective start date:",
+      effectiveStartDate,
+      "Range start date:",
+      rangeStartDate,
+      "Earliest transaction date:",
+      earliestTransactionDate,
+    );
+
+    // Generate all dates based on the appropriate start date
+    const allDates = getDateRange(
+      range ? rangeStartDate : effectiveStartDate,
+      endDate,
+    );
+
+    // Get existing history for this portfolio
     const existingHistory = await PortfolioHistory.find({
       portfolio_id: new Types.ObjectId(portfolioId),
     }).sort({ port_history_date: 1 });
@@ -82,10 +140,19 @@ export async function GET(request: Request) {
         (entry) => entry.port_history_date.toISOString().split("T")[0],
       ),
     );
-    const missingDates = allDates.filter((date) => !existingDates.has(date));
-    console.log("Missing dates to process:", missingDates);
 
-    // Trigger POST to save missing history only if there are missing dates
+    // Identify missing dates only within the effective range
+    const missingDates = allDates
+      .filter((date) => new Date(date) >= new Date(effectiveStartDate))
+      .filter((date) => !existingDates.has(date));
+    console.log(
+      "Missing dates to process for portfolio",
+      portfolioId,
+      ":",
+      missingDates,
+    );
+
+    // Trigger POST to save missing history only if there are missing dates within the effective range
     if (missingDates.length > 0) {
       console.log(
         "Triggering individual-save for missing dates:",
@@ -98,7 +165,7 @@ export async function GET(request: Request) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             portfolio_id: portfolioId,
-            fromDate: earliestTransactionDate,
+            fromDate: effectiveStartDate,
             toDate: endDate,
             forceUpdate: false,
             userId,
@@ -106,7 +173,7 @@ export async function GET(request: Request) {
         },
       );
 
-      const saveResult = await response.json(); // Read body once
+      const saveResult = await response.json();
       console.log("Individual-save response:", {
         status: response.status,
         result: saveResult,
@@ -122,12 +189,16 @@ export async function GET(request: Request) {
       console.log("No missing dates to calculate for portfolio:", portfolioId);
     }
 
-    // Fetch updated history
+    // Fetch updated history with the full requested range when range is defined, otherwise use effective start
     const updatedHistory = await PortfolioHistory.find({
       portfolio_id: new Types.ObjectId(portfolioId),
+      port_history_date: {
+        $gte: new Date(range ? rangeStartDate : effectiveStartDate),
+        $lte: new Date(endDate),
+      },
     }).sort({ port_history_date: 1 });
 
-    // Aggregate history for the individual portfolio
+    // Aggregate history, including zeros for pre-transaction dates only when range is defined
     const individualHistory: IndividualHistoryEntry[] = [];
     const dateValues = new Map<string, number>();
     updatedHistory.forEach((entry) => {
@@ -136,12 +207,25 @@ export async function GET(request: Request) {
       dateValues.set(dateStr, currentValue + entry.port_total_value);
     });
 
-    dateValues.forEach((totalValue, dateStr) => {
-      individualHistory.push({
-        portfolio_id: portfolioId,
-        port_history_date: new Date(dateStr),
-        port_total_value: totalValue,
-      });
+    // Fill in zeros for pre-transaction dates only if range is defined
+    allDates.forEach((dateStr) => {
+      if (range && new Date(dateStr) < new Date(earliestTransactionDate)) {
+        individualHistory.push({
+          portfolio_id: portfolioId,
+          port_history_date: new Date(dateStr),
+          port_total_value: 0,
+        });
+      } else {
+        const existingValue = dateValues.get(dateStr) || 0;
+        if (existingValue > 0 || !range) {
+          // Include only if value exists or no range is set
+          individualHistory.push({
+            portfolio_id: portfolioId,
+            port_history_date: new Date(dateStr),
+            port_total_value: existingValue,
+          });
+        }
+      }
     });
 
     // Sort by date

@@ -39,3 +39,16 @@ export async function getExchangeRate(currency1: string, currency2?: string) {
     rate: exchangeRate,
   };
 }
+
+export async function getAllCurrencyRates(): Promise<Map<string, number>> {
+  const rates = await CurrencyRate.find({});
+
+  const currencyMap = new Map<string, number>();
+  currencyMap.set("USD", 1); // Set USD rate to 1 as the base
+
+  rates.forEach((rate) => {
+    currencyMap.set(rate.currency.toUpperCase(), rate.rate);
+  });
+
+  return currencyMap;
+}

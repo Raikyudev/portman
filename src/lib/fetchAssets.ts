@@ -1,6 +1,7 @@
 import Asset from "@/models/Asset";
 import { dbConnect, closeDatabase } from "@/lib/mongodb";
 import fetch from "node-fetch";
+import { getAllCurrencyRates } from "@/lib/currencyExchange";
 
 const FMP_API_KEY = process.env.FINANCIAL_API_KEY;
 if (!FMP_API_KEY) {
@@ -45,8 +46,12 @@ export default async function fetchAssets() {
     }
 
     const stocks: FetchedAsset[] = (await response.json()) as FetchedAsset[];
-
     console.log(`Fetched ${stocks.length} assets from API.`);
+
+    // Preload all currency rates
+    console.log("Fetching all currency rates...");
+    const currencyRates = await getAllCurrencyRates();
+    console.log(`Loaded ${currencyRates.size} currency rates.`);
 
     const logInterval = setInterval(() => {
       console.log(`Processing... ${stocks.length} assets`);
@@ -54,12 +59,20 @@ export default async function fetchAssets() {
 
     const bulkOps = await Promise.all(
       stocks.map(async (stock) => {
-        const existingAsset = await Asset.findOne({ symbol: stock.symbol });
-        const lastPrice = existingAsset ? existingAsset.price : stock.price;
-        const priceChangePct =
-          lastPrice && stock.price
-            ? ((stock.price - lastPrice) / lastPrice) * 100
-            : 0;
+        const stockCurrency = exchangeCurrencyMap[stock.exchange] || "USD";
+
+        // Convert price to USD by dividing by the exchange rate (rate is foreign currency per USD)
+        let convertedPrice = stock.price || 0;
+        if (stockCurrency !== "USD") {
+          const rate = currencyRates.get(stockCurrency.toUpperCase());
+          if (rate === undefined) {
+            console.warn(
+              `No exchange rate found for ${stockCurrency} for ${stock.symbol}, using original price`,
+            );
+          } else {
+            convertedPrice = stock.price / rate;
+          }
+        }
 
         return {
           updateOne: {
@@ -68,9 +81,7 @@ export default async function fetchAssets() {
               $set: {
                 symbol: stock.symbol,
                 name: stock.name,
-                price: stock.price || 0,
-                priceChangePct: priceChangePct,
-                currency: exchangeCurrencyMap[stock.exchange] || "USD",
+                price: convertedPrice,
                 market: stock.exchangeShortName,
                 asset_type: stock.type,
               },
@@ -92,7 +103,7 @@ export default async function fetchAssets() {
 
     clearInterval(logInterval);
   } catch (error) {
-    console.log("Error fetching assets list" + error);
+    console.log("Error fetching assets list: " + error);
   }
 
   console.log("Finished fetching assets");
