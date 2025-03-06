@@ -114,36 +114,7 @@ export async function POST(request: Request) {
       );
       console.log("Earliest transaction dates by symbol:", symbolEarliestDates);
 
-      // Initial fetch for all unique symbols
-      const uniqueSymbols = new Set(
-        transactions.map((tx) => tx.asset_details.symbol),
-      );
       const stockPrices: Record<string, Record<string, number>> = {};
-      for (const symbol of uniqueSymbols) {
-        const startDate =
-          symbolEarliestDates[symbol] || earliestTransactionDate;
-        console.log(
-          `Initial fetch for ${symbol} from ${startDate} to ${endDate}...`,
-        );
-        try {
-          const newPrices = await getStockPrices(
-            { [symbol]: 0 },
-            startDate,
-            endDate,
-          );
-          for (const [newDate, prices] of Object.entries(newPrices)) {
-            stockPrices[newDate] = stockPrices[newDate] || {};
-            stockPrices[newDate][symbol] = prices[symbol] || 0;
-            console.log(
-              `Initial price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
-            );
-          }
-        } catch (error) {
-          console.error(`Error fetching initial prices for ${symbol}:`, error);
-        }
-      }
-
-      // Process each date using cached prices
       const newHistory = await Promise.all(
         datesToCalculate.map(async (date) => {
           console.log("Processing date for portfolio", portfolioId, ":", date);
@@ -159,40 +130,29 @@ export async function POST(request: Request) {
           }
 
           const symbolsToPrice = Object.keys(holdingsForDate);
-          const missingSymbols = symbolsToPrice.filter(
-            (symbol) =>
-              !stockPrices[date] ||
-              !stockPrices[date].hasOwnProperty(symbol) ||
-              stockPrices[date][symbol] === 0,
-          );
-          console.log("Missing symbols for", date, ":", missingSymbols);
 
-          if (missingSymbols.length > 0) {
-            for (const symbol of missingSymbols) {
-              const startDateForSymbol =
-                symbolEarliestDates[symbol] || earliestTransactionDate;
-              console.log(
-                `Fetching prices for ${symbol} from ${startDateForSymbol} to ${date}...`,
+          // Fetch prices only for this specific date if not already cached
+          if (!stockPrices[date]) {
+            stockPrices[date] = {};
+            const symbolHoldings = Object.fromEntries(
+              symbolsToPrice.map((symbol) => [symbol, holdingsForDate[symbol]]),
+            );
+            console.log(
+              `Fetching prices for ${symbolsToPrice.join(", ")} on ${date}...`,
+            );
+            try {
+              const newPrices = await getStockPrices(
+                symbolHoldings,
+                date, // Start date
+                date, // End date (same as start, fetching only this date)
               );
-              try {
-                const newPrices = await getStockPrices(
-                  { [symbol]: holdingsForDate[symbol] },
-                  startDateForSymbol,
-                  date,
-                );
-                for (const [newDate, prices] of Object.entries(newPrices)) {
-                  stockPrices[newDate] = stockPrices[newDate] || {};
-                  stockPrices[newDate][symbol] = prices[symbol] || 0;
-                  console.log(
-                    `Updated price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
-                  );
-                }
-              } catch (error) {
-                console.error(
-                  `Error fetching prices for ${symbol} on ${date}:`,
-                  error,
-                );
-              }
+              stockPrices[date] = newPrices[date] || {};
+              console.log(`Prices for ${date}:`, stockPrices[date]);
+            } catch (error) {
+              console.error(
+                `Error fetching prices for ${symbolsToPrice.join(", ")} on ${date}:`,
+                error,
+              );
             }
           }
 

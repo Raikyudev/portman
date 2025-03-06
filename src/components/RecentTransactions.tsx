@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import PopoutWindow from "./PopoutWindow"; // Adjust path as needed
 import AllTransactions from "./AllTransactions"; // Adjust path as needed
+import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
 
 interface Transaction {
   date: string;
@@ -23,23 +24,35 @@ interface Transaction {
   total: number;
 }
 
-export default function RecentTransactions() {
+interface RecentTransactionsProps {
+  portfolioId?: string; // Optional portfolioId prop
+}
+
+export default function RecentTransactions({
+  portfolioId,
+}: RecentTransactionsProps = {}) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPopoutOpen, setIsPopoutOpen] = useState(false); // State to control PopoutWindow
+  const [isPopoutOpen, setIsPopoutOpen] = useState(false);
 
   useEffect(() => {
     const fetchRecentTransactions = async () => {
       setLoading(true);
       try {
-        const response = await fetch("/api/transactions?limit=5", {
+        const url = portfolioId
+          ? `/api/transactions?portfolio_id=${portfolioId}&limit=5`
+          : "/api/transactions?limit=5";
+
+        const response = await fetch(url, {
           credentials: "include",
         });
         console.log("Transactions API Response:", {
           status: response.status,
           statusText: response.statusText,
+          url,
         });
+
         if (!response.ok) {
           const data = await response.json();
           console.error("Transactions API failed:", {
@@ -47,7 +60,9 @@ export default function RecentTransactions() {
             error: data.error || "Unknown error",
           });
           setError("Failed to load transactions");
+          return;
         }
+
         const { data } = await response.json();
         console.log("Fetched transactions:", data);
         setTransactions(data || []);
@@ -63,21 +78,19 @@ export default function RecentTransactions() {
     };
 
     fetchRecentTransactions();
-  }, []);
+  }, [portfolioId]);
 
-  // Handle PopoutWindow open
   const openPopout = () => {
     setIsPopoutOpen(true);
   };
 
-  // Handle PopoutWindow close
   const closePopout = () => {
     setIsPopoutOpen(false);
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between p-6 space-y-0">
+    <Card className="no-border bg-true-black">
+      <CardHeader className="flex flex-row items-center justify-between p-6 space-y-0 no-border">
         <CardTitle>Recent Transactions</CardTitle>
         <Button onClick={openPopout} variant="outline" size="sm">
           View All Transactions
@@ -88,39 +101,43 @@ export default function RecentTransactions() {
         {loading ? (
           <p>Loading transactions...</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.length > 0 ? (
-                transactions.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.symbol}</TableCell>
-                    <TableCell>{item.type}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>${item.price.toLocaleString()}</TableCell>
-                    <TableCell>${item.total.toLocaleString()}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <ScrollArea className="h-[16vh] w-full overflow-x-auto no-border overflow-x-auto">
+            {" "}
+            {/* Match PerformanceChart height */}
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6}>No recent transactions</TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Total</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {transactions.length > 0 ? (
+                  transactions.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.date}</TableCell>
+                      <TableCell>{item.symbol}</TableCell>
+                      <TableCell>{item.type}</TableCell>
+                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>${item.price.toLocaleString()}</TableCell>
+                      <TableCell>${item.total.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6}>No recent transactions</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         )}
         <PopoutWindow isOpen={isPopoutOpen} onClose={closePopout}>
-          <AllTransactions />
+          <AllTransactions portfolioId={portfolioId} />
         </PopoutWindow>
       </CardContent>
     </Card>

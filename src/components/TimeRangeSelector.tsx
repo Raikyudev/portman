@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import WhiteCalendar from "../../public/white-calendar.svg";
+import Image from "next/image";
 
 interface TimeRangeSelectorProps {
   onRangeChange: (range: string) => void;
@@ -18,13 +20,24 @@ export default function TimeRangeSelector({
   };
 
   return (
-    <div className="flex space-x-2 mb-4">
+    <div className="flex justify-center space-x-2 mb-4 bg-black w-max rounded">
+      <div className="flex justify-center my-1 ml-2">
+        <Image
+          src={WhiteCalendar}
+          alt="Calendar Icon"
+          width={24}
+          height={24}
+          className="w-6 h-6"
+        />
+      </div>
       {["W", "M", "YTD", "Y"].map((range) => (
         <Button
           key={range}
           variant={selectedRange === range ? "default" : "outline"}
           onClick={() => handleRangeChange(range)}
-          className={`text-white no-border ${selectedRange === range ? "bg-red" : "bg-black"} hover-none`}
+          className={`text-white no-border ${
+            selectedRange === range ? "bg-red" : "bg-black"
+          } hover-none`}
         >
           {range}
         </Button>

@@ -16,45 +16,69 @@ export async function GET(request: Request) {
     }
 
     const userId = session.user.id;
+    const { searchParams } = new URL(request.url);
+    const portfolioId = searchParams.get("portfolio_id"); // Get optional portfolio_id parameter
+    const limit = searchParams.get("limit")
+      ? parseInt(searchParams.get("limit")!, 10)
+      : undefined; // Default to undefined if not provided
 
-    // Fetch all portfolio IDs for the user
-    const portfolios = await Portfolio.find({ user_id: userId }).select("_id");
-    if (!portfolios || portfolios.length === 0) {
-      return NextResponse.json({ data: [] }, { status: 200 });
+    let portfolioIds: string[];
+
+    if (portfolioId) {
+      // If portfolio_id is provided, verify it belongs to the user
+      const portfolio = await Portfolio.findOne({
+        _id: portfolioId,
+        user_id: userId,
+      });
+      if (!portfolio) {
+        return NextResponse.json(
+          { error: "Portfolio not found or unauthorized" },
+          { status: 404 },
+        );
+      }
+      portfolioIds = [portfolioId];
+    } else {
+      // Fetch all portfolio IDs for the user if no portfolio_id is provided
+      const portfolios = await Portfolio.find({ user_id: userId }).select(
+        "_id",
+      );
+      if (!portfolios || portfolios.length === 0) {
+        return NextResponse.json({ data: [] }, { status: 200 });
+      }
+      portfolioIds = portfolios.map((portfolio) => portfolio._id.toString());
     }
 
-    const portfolioIds = portfolios.map((portfolio) =>
-      portfolio._id.toString(),
-    );
-
-    // Fetch transactions for all portfolios
+    // Fetch transactions for the specified portfolio(s)
     const allTransactions = [];
-    for (const portfolioId of portfolioIds) {
-      const transactions = await getTransactions(portfolioId);
+    for (const pid of portfolioIds) {
+      const transactions = await getTransactions(pid);
+      console.log(
+        `Transactions fetched for portfolio ${pid}:`,
+        transactions.length,
+      );
       allTransactions.push(...transactions);
     }
 
     console.log(
-      "Total transactions fetched across all portfolios:",
+      "Total transactions fetched:",
       allTransactions.length,
+      "for portfolios:",
+      portfolioIds,
     );
 
-    // Get the limit parameter (default to all if not provided)
-    const { searchParams } = new URL(request.url);
-    const limit = searchParams.get("limit")
-      ? parseInt(searchParams.get("limit")!, 10)
-      : allTransactions.length;
-
-    // Validate limit
-    const effectiveLimit = Math.min(limit, allTransactions.length); // Ensure limit doesn't exceed available transactions
-    if (effectiveLimit < 0) {
+    // Apply limit if provided, otherwise return all transactions
+    const effectiveLimit =
+      limit !== undefined
+        ? Math.min(limit, allTransactions.length)
+        : allTransactions.length;
+    if (limit !== undefined && effectiveLimit < 0) {
       return NextResponse.json(
         { error: "Invalid limit parameter" },
         { status: 400 },
       );
     }
 
-    // Sort by tx_date in descending order and limit to the specified number
+    // Sort by tx_date in descending order and apply the limit
     const recentTransactions = allTransactions
       .sort(
         (a, b) => new Date(b.tx_date).getTime() - new Date(a.tx_date).getTime(),
@@ -81,7 +105,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Error fetching recent transactions:", error);
     return NextResponse.json(
-      { message: "Internal Server Error" + error },
+      { message: "Internal Server Error: " + error },
       { status: 500 },
     );
   }

@@ -20,7 +20,13 @@ interface Transaction {
   total: number;
 }
 
-export default function AllTransactions() {
+interface AllTransactionsProps {
+  portfolioId?: string; // Optional portfolioId prop
+}
+
+export default function AllTransactions({
+  portfolioId,
+}: AllTransactionsProps = {}) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,13 +35,20 @@ export default function AllTransactions() {
     const fetchAllTransactions = async () => {
       setLoading(true);
       try {
-        const response = await fetch("/api/transactions", {
+        // Construct the API URL based on whether portfolioId is provided
+        const url = portfolioId
+          ? `/api/transactions?portfolio_id=${portfolioId}`
+          : "/api/transactions";
+
+        const response = await fetch(url, {
           credentials: "include",
         });
         console.log("All Transactions API Response:", {
           status: response.status,
           statusText: response.statusText,
+          url,
         });
+
         if (!response.ok) {
           const data = await response.json();
           console.error("All Transactions API failed:", {
@@ -43,7 +56,9 @@ export default function AllTransactions() {
             error: data.error || "Unknown error",
           });
           setError("Failed to load all transactions");
+          return;
         }
+
         const { data } = await response.json();
         console.log("Fetched all transactions:", data);
         setTransactions(data || []);
@@ -59,7 +74,7 @@ export default function AllTransactions() {
     };
 
     fetchAllTransactions();
-  }, []);
+  }, [portfolioId]); // Add portfolioId as a dependency to refetch when it changes
 
   return (
     <div className="w-full">

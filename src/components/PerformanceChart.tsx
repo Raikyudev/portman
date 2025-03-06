@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -7,16 +5,21 @@ import TimeRangeSelector from "./TimeRangeSelector";
 
 interface PerformanceChartProps {
   portfolioId: string;
+  onPerformanceUpdate: (
+    value: number,
+    profit: { percentage: number; amount: number },
+  ) => void;
 }
 
 export default function PerformanceChart({
   portfolioId,
+  onPerformanceUpdate,
 }: PerformanceChartProps) {
   const [portfolioHistory, setPortfolioHistory] = useState<
     { port_total_value: number; port_history_date: string }[]
   >([]);
   const [portfolioValue, setPortfolioValue] = useState(0);
-  const [profitLoss, setProfitLoss] = useState({ percentage: 0, amount: 0 });
+  const [profit, setProfit] = useState({ percentage: 0, amount: 0 });
   const [selectedRange, setSelectedRange] = useState("YTD");
 
   useEffect(() => {
@@ -28,22 +31,40 @@ export default function PerformanceChart({
             credentials: "include",
           },
         );
-        if (!response.ok) console.error("Failed to fetch portfolio history");
+        if (!response.ok) {
+          console.error("Failed to fetch portfolio history:", response.status);
+          return;
+        }
 
         const { data } = await response.json();
+        console.log("Portfolio History Data:", data);
         setPortfolioHistory(data || []);
 
-        if (data.length > 0) {
+        if (data && data.length > 0) {
           const latestValue = data[data.length - 1].port_total_value;
-          setPortfolioValue(latestValue);
           const oldestValue = data[0].port_total_value || latestValue;
           const percentageChange =
             ((latestValue - oldestValue) / oldestValue) * 100;
           const amountChange = latestValue - oldestValue;
-          setProfitLoss({
+
+          setPortfolioValue(latestValue);
+          const profitData = {
             percentage: Math.round(percentageChange),
             amount: Math.round(amountChange),
-          });
+          };
+          setProfit(profitData);
+
+          console.log(
+            "Calling onPerformanceUpdate with:",
+            latestValue,
+            profitData,
+          );
+          onPerformanceUpdate(latestValue, profitData);
+        } else {
+          console.log("No history data, setting defaults");
+          setPortfolioValue(0);
+          setProfit({ percentage: 0, amount: 0 });
+          onPerformanceUpdate(0, { percentage: 0, amount: 0 });
         }
       } catch (error) {
         console.error("Error in fetchPortfolioHistory:", error);
@@ -51,14 +72,13 @@ export default function PerformanceChart({
     };
 
     fetchPortfolioHistory();
-  }, [portfolioId, selectedRange]);
+  }, [portfolioId, selectedRange, onPerformanceUpdate]);
 
   const chartData = portfolioHistory.map((entry) => ({
     date: new Date(entry.port_history_date).toLocaleDateString(),
     value: entry.port_total_value,
   }));
 
-  // Custom tooltip content to ensure white text
   const CustomTooltip = ({
     active,
     payload,
@@ -87,7 +107,7 @@ export default function PerformanceChart({
   };
 
   return (
-    <Card className="bg-true-black border-none shadow-none">
+    <Card className="bg-true-black border-none shadow-none h-[24vh]">
       <div className="p-4 py-8">
         <TimeRangeSelector onRangeChange={setSelectedRange} />
       </div>
@@ -96,11 +116,11 @@ export default function PerformanceChart({
           <div className="text-2xl font-bold">
             ${portfolioValue.toLocaleString()}
           </div>
-          <div className="mt-2 text-sm text-gray-400">
-            {profitLoss.percentage}%
+          <div className={`mt-2 text-sm text-gray-400`}>
+            {profit.percentage}%
           </div>
         </div>
-        <div className="flex-1 h-[200px]">
+        <div className="flex-1 h-[15vh]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <XAxis dataKey="date" fontSize={12} />
@@ -108,7 +128,7 @@ export default function PerformanceChart({
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#FF6384" // Red color to match screenshot
+                stroke="#FF6384"
                 strokeWidth={2}
                 dot={false}
               />
