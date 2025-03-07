@@ -247,7 +247,7 @@ export default function Page() {
 
         <div>
           <label>Transaction Type</label>
-          <select {...register("tx_type")}>
+          <select {...register("tx_type")} className="bg-black">
             <option value="buy">Buy</option>
             <option value="sell">Sell</option>
           </select>
@@ -279,7 +279,8 @@ export default function Page() {
           <label>Currency</label>
           <select
             {...register("currency")}
-            defaultValue={selectedAsset?.currency || ""}
+            defaultValue={"USD"}
+            className="bg-black"
           >
             <option value="" disabled>
               Select a currency

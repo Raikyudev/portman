@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { IExtendedPortfolio } from "@/types/portfolio";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import PerformanceChart from "@/components/PerformanceChart";
-import RecentTransactions from "@/components/RecentTransactions"; // Add this import
+import RecentTransactions from "@/components/RecentTransactions";
 import ProtectedLayout from "@/app/ProtectedLayout";
 import PortfolioHeader from "@/components/PortfolioHeader";
 import AddTransactionButton from "@/components/AddTransactionButton";
 
-interface AggregateHistoryEntry {
+interface IndividualHistoryEntry {
   portfolio_id: string;
   port_history_date: Date;
   port_total_value: number;
@@ -28,41 +28,62 @@ export default function Page() {
   });
 
   const fetchPortfoliosAndHistory = useCallback(async () => {
+    setLoading(true);
     try {
+      // Step 1: Fetch the list of portfolios
       const portfolioResponse = await fetch("/api/portfolio", {
         credentials: "include",
       });
-      if (!portfolioResponse.ok) console.error("Error fetching portfolios");
+      if (!portfolioResponse.ok) {
+        console.error("Error fetching portfolios");
+        console.error("Failed to fetch portfolios");
+      }
       const portfolioData = await portfolioResponse.json();
+      console.log("Raw Portfolio Data:", portfolioData);
 
-      const historyResponse = await fetch("/api/portfolio-history/aggregate", {
-        credentials: "include",
-      });
-      if (!historyResponse.ok) console.error("Error fetching history");
-      const { data: historyData }: { data: AggregateHistoryEntry[] } =
-        await historyResponse.json();
-
-      const updatedPortfolios: IExtendedPortfolio[] = portfolioData.map(
-        (portfolio: IExtendedPortfolio) => {
-          const portfolioHistory = historyData.filter(
-            (entry) => entry.portfolio_id === portfolio._id.toString(),
+      // Step 2: Fetch history for each portfolio individually
+      const updatedPortfolios: IExtendedPortfolio[] = await Promise.all(
+        portfolioData.map(async (portfolio: IExtendedPortfolio) => {
+          const historyResponse = await fetch(
+            `/api/portfolio-history/individual?range=YTD&portfolio_id=${portfolio._id}`,
+            {
+              credentials: "include",
+            },
           );
+          if (!historyResponse.ok) {
+            console.error(
+              `Error fetching history for portfolio ${portfolio._id}`,
+            );
+            return { ...portfolio, port_total_value: 0 };
+          }
+          const { data: historyData }: { data: IndividualHistoryEntry[] } =
+            await historyResponse.json();
+          console.log(`History for portfolio ${portfolio._id}:`, historyData);
+
           const latestValue =
-            portfolioHistory.length > 0
-              ? portfolioHistory[portfolioHistory.length - 1].port_total_value
+            historyData.length > 0
+              ? historyData[historyData.length - 1].port_total_value
               : 0;
           return { ...portfolio, port_total_value: latestValue };
-        },
+        }),
       );
 
-      setPortfolios(updatedPortfolios);
-      console.log("Updated Portfolios:", updatedPortfolios);
+      // Step 3: Sort portfolios by port_total_value in descending order
+      updatedPortfolios.sort((a, b) => b.port_total_value - a.port_total_value);
 
+      // Step 4: Update the portfolios state
+      setPortfolios(updatedPortfolios);
+      console.log(
+        "Updated Portfolios (sorted by total value):",
+        updatedPortfolios,
+      );
+
+      // Set the first portfolio (highest value) as the default expanded one
       if (updatedPortfolios.length > 0) {
         setExpandedPortfolio(updatedPortfolios[0]._id.toString());
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching portfolios and history:", error);
     } finally {
       setLoading(false);
     }
@@ -77,8 +98,23 @@ export default function Page() {
       console.log("Performance Update - Value:", value, "Profit:", profitData);
       setPortfolioValue(value);
       setProfit(profitData);
+
+      // Update the port_total_value for the currently expanded portfolio
+      if (expandedPortfolio) {
+        setPortfolios((prevPortfolios) => {
+          const updated = prevPortfolios.map((p) =>
+            p._id.toString() === expandedPortfolio
+              ? ({ ...p, port_total_value: value } as IExtendedPortfolio)
+              : p,
+          );
+          // Re-sort after updating the value
+          return updated.sort(
+            (a, b) => b.port_total_value - a.port_total_value,
+          );
+        });
+      }
     },
-    [],
+    [expandedPortfolio],
   );
 
   useEffect(() => {
@@ -90,7 +126,8 @@ export default function Page() {
     );
   }, [portfolios, expandedPortfolio]);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading)
+    return <div className="text-white">Loading portfolio data...</div>;
 
   const selectedPortfolio = portfolios.find(
     (p) => p._id.toString() === expandedPortfolio,
@@ -116,8 +153,7 @@ export default function Page() {
             <TabsContent
               value={expandedPortfolio || portfolios[0]?._id.toString()}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 md: col-span-2 gap-4">
-                {/* Performance Chart (2/3 width on medium screens and up) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 md:col-span-2 gap-4">
                 <div className="md:col-span-1">
                   <PerformanceChart
                     portfolioId={
@@ -126,7 +162,6 @@ export default function Page() {
                     onPerformanceUpdate={handlePerformanceUpdate}
                   />
                 </div>
-                {/* Recent Transactions (1/3 width on medium screens and up) */}
                 <div>
                   {expandedPortfolio ? (
                     <RecentTransactions portfolioId={expandedPortfolio} />
