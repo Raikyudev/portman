@@ -32,7 +32,7 @@ export default function PortfolioDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="bg-red text-white p-2 flex items-center space-x-2 rounded-xl">
+        <Button className="bg-red text-white p-2 flex justify-between space-x-2 rounded-lg min-w-[150px]">
           <span>
             {portfolios.find((p) => p._id.toString() === selectedPortfolioId)
               ?.name || "Portfolio Name"}

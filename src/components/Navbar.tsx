@@ -50,20 +50,20 @@ export default function Navbar() {
               {isHomePage ? (
                 <>
                   <NavigationMenuItem>
-                    <Link href="/portfolio" legacyBehavior passHref>
-                      <NavigationMenuLink
-                        className={navigationMenuTriggerStyle()}
-                      >
-                        Portfolio
-                      </NavigationMenuLink>
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
                     <Link href="/dashboard" legacyBehavior passHref>
                       <NavigationMenuLink
                         className={navigationMenuTriggerStyle()}
                       >
                         Dashboard
+                      </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <Link href="/portfolio" legacyBehavior passHref>
+                      <NavigationMenuLink
+                        className={navigationMenuTriggerStyle()}
+                      >
+                        Portfolio
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>
@@ -98,15 +98,6 @@ export default function Navbar() {
               ) : (
                 <>
                   <NavigationMenuItem>
-                    <Link href="/portfolio" legacyBehavior passHref>
-                      <NavigationMenuLink
-                        className={navigationMenuTriggerStyle()}
-                      >
-                        Portfolio
-                      </NavigationMenuLink>
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
                     <Link href="/dashboard" legacyBehavior passHref>
                       <NavigationMenuLink
                         className={navigationMenuTriggerStyle()}
@@ -115,6 +106,16 @@ export default function Navbar() {
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <Link href="/portfolio" legacyBehavior passHref>
+                      <NavigationMenuLink
+                        className={navigationMenuTriggerStyle()}
+                      >
+                        Portfolio
+                      </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuItem>
+
                   <NavigationMenuItem>
                     <Link href="#" legacyBehavior passHref>
                       <NavigationMenuLink

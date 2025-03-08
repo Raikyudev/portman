@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import PopoutWindow from "./PopoutWindow"; // Adjust path as needed
 import AllTransactions from "./AllTransactions"; // Adjust path as needed
-import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Import ScrollArea
 
 interface Transaction {
   date: string;
@@ -90,7 +90,7 @@ export default function RecentTransactions({
 
   return (
     <Card className="no-border bg-true-black">
-      <CardHeader className="flex flex-row items-center justify-between p-6 space-y-0 no-border">
+      <CardHeader className="flex flex-row items-center justify-between pt-6 space-y-0 no-border">
         <CardTitle>Recent Transactions</CardTitle>
         <Button onClick={openPopout} variant="outline" size="sm">
           View All Transactions
@@ -101,9 +101,8 @@ export default function RecentTransactions({
         {loading ? (
           <p>Loading transactions...</p>
         ) : (
-          <ScrollArea className="h-[16vh] w-full overflow-x-auto no-border overflow-x-auto">
+          <ScrollArea className="h-[16vh] w-full overflow-x-auto no-border overflow-x-auto whitespace-nowrap">
             {" "}
-            {/* Match PerformanceChart height */}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -134,6 +133,7 @@ export default function RecentTransactions({
                 )}
               </TableBody>
             </Table>
+            <ScrollBar orientation={"horizontal"} />
           </ScrollArea>
         )}
         <PopoutWindow isOpen={isPopoutOpen} onClose={closePopout}>

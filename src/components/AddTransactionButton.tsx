@@ -2,7 +2,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface AddTransactionButtonProps {
   portfolioId?: string;
@@ -13,18 +13,22 @@ export default function AddTransactionButton({
   portfolioId,
   isEnabled,
 }: AddTransactionButtonProps) {
+  const router = useRouter();
+
+  const handleAddTransaction = () => {
+    if (portfolioId && isEnabled) {
+      router.push(`/portfolio/${portfolioId}/add-transaction`);
+    }
+  };
+
   return (
     <Button
-      asChild
       disabled={!isEnabled || !portfolioId}
       variant="default"
-      className="bg-red-500 hover:bg-red-600 text-white"
+      className="bg-red hover:bg-white hover:text-true-black text-white"
+      onClick={handleAddTransaction}
     >
-      <Link
-        href={portfolioId ? `/portfolio/${portfolioId}/add-transaction` : "#"}
-      >
-        Add Transaction
-      </Link>
+      Add Transaction
     </Button>
   );
 }

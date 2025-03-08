@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const userId = session.user.id;
   const { searchParams } = new URL(request.url);
   const portfolioId = searchParams.get("portfolio_id") || undefined;
+  const limitAmount = Number(searchParams.get("limit")) || 5;
 
   await dbConnect();
 
@@ -141,11 +142,11 @@ export async function GET(request: Request) {
           ? (holding.value / totalPortfolioValue) * 100
           : 0,
     }));
-
+    console.log("Holdings:", holdings.length);
     // Step 6: Sort by value (descending) and limit to top holdings (e.g., top 5)
     const topHoldings = holdings
       .sort((a, b) => b.value - a.value)
-      .slice(0, 5)
+      .slice(0, limitAmount === 0 ? holdings.length : limitAmount)
       .map((h) => ({
         ...h,
         percentage: Number(h.percentage.toFixed(2)),

@@ -1,0 +1,191 @@
+// src/components/PortfolioAllocation.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { PieChart, Pie, Cell } from "recharts";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface Holding {
+  name: string;
+  symbol: string;
+  shares: number;
+  value: number;
+  percentage: number;
+}
+
+interface PortfolioAllocationProps {
+  portfolioId: string;
+}
+
+export default function PortfolioAllocation({
+  portfolioId,
+}: PortfolioAllocationProps) {
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchHoldings = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(
+          `/api/portfolio/top-holdings?portfolio_id=${portfolioId}&limit=0`,
+          {
+            credentials: "include",
+          },
+        );
+
+        if (!response.ok) {
+          console.error("Failed to fetch top holdings");
+        }
+
+        const { data } = await response.json();
+        setHoldings(data || []);
+      } catch (err) {
+        console.error("Error fetching holdings:", err);
+        setError("Failed to load portfolio allocation");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (portfolioId) {
+      fetchHoldings();
+    }
+  }, [portfolioId]);
+
+  // Sort holdings by value (descending) and prepare chart data
+  const sortedHoldings = [...holdings].sort((a, b) => b.value - a.value);
+
+  // Take top 5 holdings for the pie chart
+  const top5Holdings = sortedHoldings.slice(0, 5);
+
+  // Calculate "Other" category if there are more than 5 holdings
+  const otherHoldings = sortedHoldings.slice(5);
+  const otherPercentage = otherHoldings.reduce(
+    (sum, holding) => sum + holding.percentage,
+    0,
+  );
+
+  // Prepare data for the PieChart
+  const chartData = [
+    ...top5Holdings.map((holding) => ({
+      name: holding.symbol,
+      value: holding.percentage,
+    })),
+    ...(otherHoldings.length > 0
+      ? [{ name: "Other", value: Number(otherPercentage.toFixed(2)) }]
+      : []),
+  ];
+
+  // Define colors for the pie chart slices
+  const COLORS = [
+    "#FF6384",
+    "#36A2EB",
+    "#FFCE56",
+    "#4BC0C0",
+    "#9966FF",
+    "#C0C0C0", // Color for "Other"
+  ];
+
+  if (loading) return <div>Loading portfolio allocation...</div>;
+  if (error) return <div>{error}</div>;
+  if (!holdings.length) return <div>No holdings found</div>;
+
+  return (
+    <Card className="bg-true-black text-white no-border">
+      <CardHeader>
+        <CardTitle>Portfolio Allocation</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-row items-center gap-4 w-full">
+          {" "}
+          {/* Changed to flex-row and full width */}
+          {/* Pie Chart with centered layout */}
+          <div className="w-1/2 p-0 m-0 flex justify-center">
+            <ChartContainer
+              config={{
+                percentage: {
+                  label: "Percentage",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px] p-0 m-0"
+            >
+              <PieChart width={400} height={300}>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={120}
+                  fill="#8884d8"
+                  labelLine={true}
+                  label={({ name }) => name}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <ChartTooltip content={<ChartTooltipContent />} />
+              </PieChart>
+            </ChartContainer>
+          </div>
+          {/* Holdings Table with ScrollArea */}
+          <div className="w-1/2">
+            <ScrollArea className="h-[300px] w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-white">Symbol</TableHead>
+                    <TableHead className="text-white">Name</TableHead>
+                    <TableHead className="text-white">Shares</TableHead>
+                    <TableHead className="text-white">Value</TableHead>
+                    <TableHead className="text-white">% of portfolio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedHoldings.length > 0 ? (
+                    sortedHoldings.map((holding, index) => (
+                      <TableRow key={index} className="cursor-pointer">
+                        <TableCell>{holding.symbol}</TableCell>
+                        <TableCell>{holding.name}</TableCell>
+                        <TableCell>{holding.shares}</TableCell>
+                        <TableCell>${holding.value.toLocaleString()}</TableCell>
+                        <TableCell>{holding.percentage}%</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5}>No holdings found</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

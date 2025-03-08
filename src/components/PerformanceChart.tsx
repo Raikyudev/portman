@@ -116,8 +116,12 @@ export default function PerformanceChart({
           <div className="text-2xl font-bold">
             ${portfolioValue.toLocaleString()}
           </div>
-          <div className={`mt-2 text-sm text-gray-400`}>
-            {profit.percentage}%
+          <div
+            className={`mt-2 text-sm ${profit.percentage >= 0 ? "text-green-500" : "text-red"}`}
+          >
+            {profit.percentage >= 0
+              ? `+${profit.percentage}%`
+              : `-${Math.abs(profit.percentage)}%`}
           </div>
         </div>
         <div className="flex-1 h-[15vh]">

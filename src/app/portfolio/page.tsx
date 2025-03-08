@@ -8,6 +8,9 @@ import RecentTransactions from "@/components/RecentTransactions";
 import ProtectedLayout from "@/app/ProtectedLayout";
 import PortfolioHeader from "@/components/PortfolioHeader";
 import AddTransactionButton from "@/components/AddTransactionButton";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import PortfolioAllocation from "@/components/PortfolioAllocation";
 
 interface IndividualHistoryEntry {
   portfolio_id: string;
@@ -26,6 +29,7 @@ export default function Page() {
     percentage: 0,
     amount: 0,
   });
+  const router = useRouter();
 
   const fetchPortfoliosAndHistory = useCallback(async () => {
     setLoading(true);
@@ -125,7 +129,9 @@ export default function Page() {
       expandedPortfolio,
     );
   }, [portfolios, expandedPortfolio]);
-
+  const handleCreateNewPortfolio = () => {
+    router.push("/portfolio/add");
+  };
   if (loading)
     return <div className="text-white">Loading portfolio data...</div>;
 
@@ -135,55 +141,80 @@ export default function Page() {
 
   return (
     <ProtectedLayout>
-      <div className="container mx-auto p-4 text-white bg-gray-900 min-h-screen">
-        <PortfolioHeader
-          selectedPortfolioName={selectedPortfolio?.name || "Portfolio Name"}
-          earnings={`Earnings ${profit.percentage}% ($${profit.amount.toLocaleString()})`}
-          portfolioValue={`Portfolio Value $${portfolioValue.toLocaleString()}`}
-          portfolios={portfolios}
-          onPortfolioSelect={setExpandedPortfolio}
-          initialPortfolioId={expandedPortfolio ?? undefined}
-        />
-        {portfolios.length > 0 && (
-          <Tabs
-            value={expandedPortfolio || portfolios[0]?._id.toString()}
-            onValueChange={setExpandedPortfolio}
-            className="w-full"
-          >
-            <TabsContent
+      {portfolios.length > 0 ? (
+        <div className="container mx-auto p-4 text-white bg-gray-900 min-h-screen flex flex-col items-center justify-center">
+          {/* Entire content centered vertically */}
+          <div className="w-full">
+            {/* Header section */}
+            <div className="flex items-center justify-between mb-4">
+              <PortfolioHeader
+                selectedPortfolioName={
+                  selectedPortfolio?.name || "Portfolio Name"
+                }
+                portfolios={portfolios}
+                onPortfolioSelect={setExpandedPortfolio}
+                initialPortfolioId={expandedPortfolio ?? undefined}
+                portfolioValue={portfolioValue}
+                profit={profit}
+              />
+              {expandedPortfolio ? (
+                <AddTransactionButton
+                  portfolioId={expandedPortfolio}
+                  isEnabled={true}
+                />
+              ) : (
+                <AddTransactionButton isEnabled={false} />
+              )}
+            </div>
+            {/* Main content */}
+            <Tabs
               value={expandedPortfolio || portfolios[0]?._id.toString()}
+              onValueChange={setExpandedPortfolio}
+              className="w-full"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 md:col-span-2 gap-4">
-                <div className="md:col-span-1">
-                  <PerformanceChart
-                    portfolioId={
-                      expandedPortfolio || portfolios[0]?._id.toString()
-                    }
-                    onPerformanceUpdate={handlePerformanceUpdate}
-                  />
-                </div>
-                <div>
-                  {expandedPortfolio ? (
-                    <RecentTransactions portfolioId={expandedPortfolio} />
-                  ) : (
-                    <RecentTransactions />
-                  )}
-                </div>
-                <div>
-                  {expandedPortfolio ? (
-                    <AddTransactionButton
-                      portfolioId={expandedPortfolio}
-                      isEnabled={true}
+              <TabsContent
+                value={expandedPortfolio || portfolios[0]?._id.toString()}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 md:col-span-2 gap-4">
+                  <div className="md:col-span-1">
+                    <PerformanceChart
+                      portfolioId={
+                        expandedPortfolio || portfolios[0]?._id.toString()
+                      }
+                      onPerformanceUpdate={handlePerformanceUpdate}
                     />
-                  ) : (
-                    <AddTransactionButton isEnabled={false} />
-                  )}
+                  </div>
+                  <div>
+                    {expandedPortfolio ? (
+                      <RecentTransactions portfolioId={expandedPortfolio} />
+                    ) : (
+                      <RecentTransactions />
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <PortfolioAllocation
+                      portfolioId={
+                        expandedPortfolio || portfolios[0]?._id.toString()
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        )}
-      </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      ) : (
+        <div className="container mx-auto p-4 text-white bg-gray-900 min-h-screen flex flex-col items-center justify-center">
+          <div>No portfolios found</div>
+          <Button
+            onClick={handleCreateNewPortfolio}
+            variant="default"
+            className="w-auto bg-red text-white mt-4 px-4 rounded-2xl"
+          >
+            Create new portfolio
+          </Button>
+        </div>
+      )}
     </ProtectedLayout>
   );
 }
