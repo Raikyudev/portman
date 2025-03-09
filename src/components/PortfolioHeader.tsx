@@ -1,3 +1,4 @@
+// src/components/PortfolioHeader.tsx
 import { Card } from "@/components/ui/card";
 import PortfolioDropdown from "./PortfolioDropdown";
 import { IExtendedPortfolio } from "@/types/portfolio";
@@ -9,20 +10,21 @@ interface PortfolioHeaderProps {
   onPortfolioSelect: (portfolioId: string) => void;
   initialPortfolioId?: string;
   selectedPortfolioId?: string;
-  portfolioValue: number; // Add portfolioValue as a prop
-  profit: { percentage: number; amount: number }; // Add profit as a prop
+  portfolioValue: number;
+  profit: { percentage: number; amount: number };
+  onPortfoliosUpdate: (newPortfolios: IExtendedPortfolio[]) => void;
 }
 
 export default function PortfolioHeader({
   portfolios,
   onPortfolioSelect,
   initialPortfolioId,
-  portfolioValue, // Destructure the new prop
-  profit, // Destructure the new prop
+  portfolioValue,
+  profit,
+  onPortfoliosUpdate,
 }: PortfolioHeaderProps) {
   const session = useSession();
 
-  // Format earnings based on profit
   const earnings = `Earnings ${profit.percentage >= 0 ? `+$${profit.amount.toLocaleString()}` : `-$${Math.abs(profit.amount).toLocaleString()}`} (${profit.percentage > 0 ? `+${profit.percentage}%` : `${profit.percentage}%`})`;
 
   return (
@@ -37,6 +39,7 @@ export default function PortfolioHeader({
           portfolios={portfolios}
           onPortfolioSelect={onPortfolioSelect}
           initialPortfolioId={initialPortfolioId}
+          onPortfoliosUpdate={onPortfoliosUpdate}
         />
       </div>
       <div className={`flex items-center no-border space-x-2`}>

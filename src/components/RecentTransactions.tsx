@@ -97,7 +97,7 @@ export default function RecentTransactions({
         </Button>
       </CardHeader>
       <CardContent className="h-auto">
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && <div className="text-red mb-4">{error}</div>}
         {loading ? (
           <p>Loading transactions...</p>
         ) : (

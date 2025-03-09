@@ -20,7 +20,7 @@ interface AssetPriceResponse {
 
 interface AssetPriceChartProps {
   assetId: string;
-  onClose: () => void; // Callback to close the chart and unset selectedAssetId
+  onClose: () => void;
 }
 
 export default function AssetPriceChart({
@@ -164,12 +164,7 @@ export default function AssetPriceChart({
             className="focus:outline-none"
             aria-label="Close chart"
           >
-            <Image
-              src="/white-cross.svg"
-              alt="Close"
-              width={24} // Adjust size as needed
-              height={24} // Adjust size as needed
-            />
+            <Image src="/white-cross.svg" alt="Close" width={24} height={24} />
           </button>
         </div>
       </div>

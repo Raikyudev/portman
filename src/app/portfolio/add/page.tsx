@@ -81,7 +81,7 @@ export default function Page() {
             {...register("name")}
             className={"bg-black border-red rounded-lg"}
           />
-          {errors.name && <p className="text-red-500">{errors.name.message}</p>}
+          {errors.name && <p className="text-red">{errors.name.message}</p>}
         </div>
 
         <div>
@@ -91,10 +91,10 @@ export default function Page() {
             {...register("description")}
           />
           {errors.description && (
-            <p className="text-red-500">{errors.description.message}</p>
+            <p className="text-red">{errors.description.message}</p>
           )}
         </div>
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p className="text-red">{error}</p>}
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Creating portfolio..." : "Create portfolio"}
         </button>

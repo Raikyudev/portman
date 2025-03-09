@@ -89,7 +89,7 @@ export default function LoginForm() {
               className="bg-transparent border-gray-800 text-white placeholder:text-gray-600"
             />
             {errors.email && (
-              <p className="text-xs text-red-500">{errors.email.message}</p>
+              <p className="text-xs text-red">{errors.email.message}</p>
             )}
           </div>
 
@@ -112,7 +112,7 @@ export default function LoginForm() {
               className="bg-transparent border-gray-800 text-white"
             />
             {errors.password && (
-              <p className="text-xs text-red-500">{errors.password.message}</p>
+              <p className="text-xs text-red">{errors.password.message}</p>
             )}
           </div>
 

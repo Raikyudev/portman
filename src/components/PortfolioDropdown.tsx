@@ -9,25 +9,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { IExtendedPortfolio } from "@/types/portfolio";
-import { useRouter } from "next/navigation";
+import AddPortfolioPopover from "./AddPortfolioPopover";
 
 interface PortfolioDropdownProps {
   portfolios: IExtendedPortfolio[];
   onPortfolioSelect: (portfolioId: string) => void;
   initialPortfolioId?: string;
+  onPortfoliosUpdate: (newPortfolios: IExtendedPortfolio[]) => void;
 }
 
 export default function PortfolioDropdown({
   portfolios,
   onPortfolioSelect,
   initialPortfolioId,
+  onPortfoliosUpdate,
 }: PortfolioDropdownProps) {
-  const selectedPortfolioId = initialPortfolioId || portfolios[0]?._id;
-  const router = useRouter();
-
-  const handleCreateNewPortfolio = () => {
-    router.push("/portfolio/add");
-  };
+  const selectedPortfolioId =
+    initialPortfolioId || portfolios[0]?._id.toString();
 
   return (
     <DropdownMenu>
@@ -72,19 +70,25 @@ export default function PortfolioDropdown({
             >
               <div className="flex justify-between w-full">
                 <span>{portfolio.name || "Portfolio Name"}</span>
-                <span>${portfolio.port_total_value.toLocaleString()}</span>
+                <span>
+                  ${portfolio.port_total_value?.toLocaleString() || "0"}
+                </span>
               </div>
             </DropdownMenuItem>
           ))}
         </div>
         <div className="p-2 flex justify-center">
-          <Button
-            onClick={handleCreateNewPortfolio}
-            variant="default"
-            className="w-auto bg-red text-white mt-4 px-4 rounded-2xl"
-          >
-            Create new portfolio
-          </Button>
+          <AddPortfolioPopover
+            trigger={
+              <Button
+                variant="default"
+                className="w-auto bg-red text-white mt-4 px-4 rounded-2xl"
+              >
+                Create new portfolio
+              </Button>
+            }
+            onPortfolioCreated={() => onPortfoliosUpdate([])}
+          />
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

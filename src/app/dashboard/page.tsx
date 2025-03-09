@@ -115,7 +115,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold mb-4">
           Hi, {session?.user?.first_name || "User"}
         </h1>
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && <div className="text-red mb-4">{error}</div>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 auto-rows-max">
           <Watchlist />
           <Card>

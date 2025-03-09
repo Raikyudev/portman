@@ -78,7 +78,7 @@ export default function Watchlist() {
         <CardTitle>Your Watchlist</CardTitle>
       </CardHeader>
       <CardContent className="h-auto">
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && <div className="text-red mb-4">{error}</div>}
         <Table>
           <TableHeader>
             <TableRow>

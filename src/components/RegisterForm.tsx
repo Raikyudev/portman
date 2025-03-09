@@ -94,9 +94,7 @@ export default function RegisterForm() {
                 className="bg-transparent border-gray-800 text-white placeholder:text-gray-600"
               />
               {errors.first_name && (
-                <p className="text-xs text-red-500">
-                  {errors.first_name.message}
-                </p>
+                <p className="text-xs text-red">{errors.first_name.message}</p>
               )}
             </div>
 
@@ -111,9 +109,7 @@ export default function RegisterForm() {
                 className="bg-transparent border-gray-800 text-white placeholder:text-gray-600"
               />
               {errors.last_name && (
-                <p className="text-xs text-red-500">
-                  {errors.last_name.message}
-                </p>
+                <p className="text-xs text-red">{errors.last_name.message}</p>
               )}
             </div>
           </div>
@@ -130,7 +126,7 @@ export default function RegisterForm() {
               className="bg-transparent border-gray-800 text-white placeholder:text-gray-600"
             />
             {errors.email && (
-              <p className="text-xs text-red-500">{errors.email.message}</p>
+              <p className="text-xs text-red">{errors.email.message}</p>
             )}
           </div>
 
@@ -145,7 +141,7 @@ export default function RegisterForm() {
               className="bg-transparent border-gray-800 text-white"
             />
             {errors.password && (
-              <p className="text-xs text-red-500">{errors.password.message}</p>
+              <p className="text-xs text-red">{errors.password.message}</p>
             )}
           </div>
 
@@ -160,7 +156,7 @@ export default function RegisterForm() {
               className="bg-transparent border-gray-800 text-white"
             />
             {errors.confirm_password && (
-              <p className="text-xs text-red-500">
+              <p className="text-xs text-red">
                 {errors.confirm_password.message}
               </p>
             )}

@@ -79,7 +79,7 @@ export default function AllTransactions({
   return (
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-4 text-white">All Transactions</h2>
-      {error && <div className="text-red-500 mb-4">{error}</div>}
+      {error && <div className="text-red mb-4">{error}</div>}
       <ScrollArea className="h-[calc(80vh-12rem)] max-h-full w-full p-2">
         {loading ? (
           <p className="text-gray-300">Loading all transactions...</p>

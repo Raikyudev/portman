@@ -260,7 +260,7 @@ export default function Page() {
             {...register("quantity", { valueAsNumber: true })}
           />
           {errors.quantity && (
-            <p className="text-red-500">{errors.quantity.message}</p>
+            <p className="text-red">{errors.quantity.message}</p>
           )}
         </div>
 
@@ -271,7 +271,7 @@ export default function Page() {
             {...register("price_per_unit", { valueAsNumber: true })}
           />
           {errors.price_per_unit && (
-            <p className="text-red-500">{errors.price_per_unit.message}</p>
+            <p className="text-red">{errors.price_per_unit.message}</p>
           )}
         </div>
 
@@ -302,7 +302,7 @@ export default function Page() {
           />
         </div>
 
-        {errors && <p className="text-red-500">{error}</p>}
+        {errors && <p className="text-red">{error}</p>}
 
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Adding transaction..." : "Add Transaction"}
