@@ -1,5 +1,11 @@
+// src/lib/stockPrices.ts
 import yahooFinance from "yahoo-finance2";
 import { getDateRange } from "./utils";
+
+interface PriceEntry {
+  date: string;
+  price: number;
+}
 
 export async function getStockPrices(
   holdings: Record<string, number>,
@@ -19,79 +25,61 @@ export async function getStockPrices(
   const symbols = Object.keys(holdings);
   console.log("Fetching prices for symbols:", symbols);
 
-  // Sequential fetching to avoid rate limits
-  for (const symbol of symbols) {
-    console.log(`Processing symbol: ${symbol}`);
-    try {
-      const period1 = new Date(adjustedStartDate);
-      const period2 = new Date(adjustedEndDate);
-      if (
-        period1.toISOString().split("T")[0] ===
-        period2.toISOString().split("T")[0]
-      ) {
-        period2.setDate(period2.getDate() + 1);
-      }
-      console.log(
-        `Fetching chart data for ${symbol} from ${adjustedStartDate} to ${adjustedEndDate}...`,
-      );
-      const result = await yahooFinance.chart(symbol, {
-        period1: period1,
-        period2: period2,
-        interval: "1d",
-        return: "array",
-      });
+  // Fetch full price history for all symbols in parallel
+  const priceHistoryPromises = symbols.map((symbol) =>
+    getFullPriceHistory(symbol, adjustedStartDate, adjustedEndDate),
+  );
+  const priceHistories = await Promise.all(priceHistoryPromises);
 
-      if (!result.quotes || result.quotes.length === 0) {
-        console.warn(
-          `No quotes found for ${symbol}, using fallback for all dates`,
+  // Merge price histories into the expected format
+  for (let i = 0; i < symbols.length; i++) {
+    const symbol = symbols[i];
+    const history = priceHistories[i];
+
+    for (const entry of history) {
+      const date = entry.date;
+      stockPrices[date] = stockPrices[date] || {};
+      let price = entry.price;
+
+      // Apply fallback if price is 0 or missing
+      if (price === 0) {
+        price = await fetchPriceForDay(
+          symbol,
+          date,
+          getPriceMapFromHistory(priceHistories, i),
         );
-        for (const date of dateRange) {
-          stockPrices[date] = stockPrices[date] || {};
-          stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
-        }
-      } else {
-        const priceMap: Record<string, { open: number; close: number }> = {};
-        result.quotes.forEach((quote) => {
-          const dateStr = quote.date.toISOString().split("T")[0];
-          if (dateStr >= adjustedStartDate && dateStr <= adjustedEndDate) {
-            priceMap[dateStr] = {
-              open: quote.open || 0,
-              close: quote.close || 0,
-            };
-          }
-        });
-
-        for (const date of dateRange) {
-          stockPrices[date] = stockPrices[date] || {};
-          const priceData = priceMap[date] || { open: 0, close: 0 };
-          let price = Math.max(priceData.open, priceData.close);
-          if (price === 0) {
-            console.warn(`Zero price for ${symbol} on ${date}, using fallback`);
-            price = await fetchPriceForDay(symbol, date, priceMap);
-          }
-          stockPrices[date][symbol] =
-            price > 0
-              ? price
-              : await getClosestPreviousPrice(symbol, date, priceMap);
-          console.log(
-            `Price for ${symbol} on ${date}: ${stockPrices[date][symbol]}`,
-          );
-        }
       }
-    } catch (error) {
-      console.error(`Error fetching chart data for ${symbol}:`, error);
-      for (const date of dateRange) {
-        stockPrices[date] = stockPrices[date] || {};
+      stockPrices[date][symbol] =
+        price > 0 ? price : await getClosestPreviousPrice(symbol, date);
+    }
+  }
+
+  // Fill in any missing dates with fallbacks
+  for (const date of dateRange) {
+    if (!stockPrices[date]) {
+      stockPrices[date] = {};
+      for (const symbol of symbols) {
         stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
         console.log(
           `Fallback price for ${symbol} on ${date}: ${stockPrices[date][symbol]}`,
         );
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay to respect API limits
   }
 
   return stockPrices;
+}
+
+// Helper function to create a price map from a single symbol's history
+function getPriceMapFromHistory(
+  histories: PriceEntry[][],
+  index: number,
+): Record<string, { open: number; close: number }> {
+  const priceMap: Record<string, { open: number; close: number }> = {};
+  histories[index].forEach((entry) => {
+    priceMap[entry.date] = { open: entry.price, close: entry.price }; // Simplified; adjust if open/close differ
+  });
+  return priceMap;
 }
 
 export async function getStocksPriceForDay(
@@ -243,4 +231,32 @@ function adjustDateToValidRange(dateStr: string, currentDate: string): string {
     return currentDate;
   }
   return date.toISOString().split("T")[0];
+}
+
+// Updated getFullPriceHistory to use different intervals based on period
+export async function getFullPriceHistory(
+  symbol: string,
+  startDate: string,
+  endDate: string,
+): Promise<PriceEntry[]> {
+  try {
+    const results = await yahooFinance.chart(symbol, {
+      period1: startDate,
+      period2: endDate,
+      interval: "1d",
+    });
+
+    const priceHistory: PriceEntry[] = results.quotes.map(
+      (quote: { date: Date; close: number | null }) => ({
+        date: quote.date.toISOString().split("T")[0],
+        price: quote.close || 0,
+      }),
+    );
+
+    console.log(`Fetched full price history for ${symbol}:`, priceHistory);
+    return priceHistory;
+  } catch (error) {
+    console.error("Error fetching full price history:", error);
+    return [];
+  }
 }

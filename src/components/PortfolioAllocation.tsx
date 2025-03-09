@@ -18,8 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import AssetPriceChart from "@/components/AssetPriceChart";
 
 interface Holding {
+  id: string; // Added id property
   name: string;
   symbol: string;
   shares: number;
@@ -37,6 +39,7 @@ export default function PortfolioAllocation({
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHoldings = async () => {
@@ -69,22 +72,17 @@ export default function PortfolioAllocation({
     }
   }, [portfolioId]);
 
-  // Sort holdings by value (descending) and prepare chart data
   const sortedHoldings = [...holdings].sort((a, b) => b.value - a.value);
-
-  // Take top 5 holdings for the pie chart
   const top5Holdings = sortedHoldings.slice(0, 5);
-
-  // Calculate "Other" category if there are more than 5 holdings
   const otherHoldings = sortedHoldings.slice(5);
   const otherPercentage = otherHoldings.reduce(
     (sum, holding) => sum + holding.percentage,
     0,
   );
 
-  // Prepare data for the PieChart
   const chartData = [
     ...top5Holdings.map((holding) => ({
+      id: holding.id,
       name: holding.symbol,
       value: holding.percentage,
     })),
@@ -93,15 +91,26 @@ export default function PortfolioAllocation({
       : []),
   ];
 
-  // Define colors for the pie chart slices
   const COLORS = [
     "#FF6384",
     "#36A2EB",
     "#FFCE56",
     "#4BC0C0",
     "#9966FF",
-    "#C0C0C0", // Color for "Other"
+    "#C0C0C0",
   ];
+
+  const handleRowClick = (holding: Holding) => {
+    setSelectedAssetId(holding.id);
+  };
+
+  const handleAssetSelect = (assetId: string) => {
+    setSelectedAssetId(assetId);
+  };
+
+  const handleCloseChart = () => {
+    setSelectedAssetId(null);
+  };
 
   if (loading) return <div>Loading portfolio allocation...</div>;
   if (error) return <div>{error}</div>;
@@ -114,43 +123,47 @@ export default function PortfolioAllocation({
       </CardHeader>
       <CardContent>
         <div className="flex flex-row items-center gap-4 w-full">
-          {" "}
-          {/* Changed to flex-row and full width */}
-          {/* Pie Chart with centered layout */}
-          <div className="w-1/2 p-0 m-0 flex justify-center">
-            <ChartContainer
-              config={{
-                percentage: {
-                  label: "Percentage",
-                  color: "hsl(var(--chart-1))",
-                },
-              }}
-              className="h-[300px] p-0 m-0"
-            >
-              <PieChart width={400} height={300}>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={120}
-                  fill="#8884d8"
-                  labelLine={true}
-                  label={({ name }) => name}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </PieChart>
-            </ChartContainer>
+          <div className="w-1/2 p-0 m-0 flex justify-center w-full">
+            {selectedAssetId ? (
+              <AssetPriceChart
+                assetId={selectedAssetId}
+                onClose={handleCloseChart}
+              />
+            ) : (
+              <ChartContainer
+                config={{
+                  percentage: {
+                    label: "Percentage",
+                    color: "hsl(var(--chart-1))",
+                  },
+                }}
+                className="h-[300px] p-0 m-0"
+              >
+                <PieChart width={400} height={300}>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={120}
+                    fill="#8884d8"
+                    labelLine={true}
+                    label={({ name }) => name}
+                    onClick={(data) => handleAssetSelect(data.id)}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            )}
           </div>
-          {/* Holdings Table with ScrollArea */}
           <div className="w-1/2">
             <ScrollArea className="h-[300px] w-full">
               <Table>
@@ -166,7 +179,11 @@ export default function PortfolioAllocation({
                 <TableBody>
                   {sortedHoldings.length > 0 ? (
                     sortedHoldings.map((holding, index) => (
-                      <TableRow key={index} className="cursor-pointer">
+                      <TableRow
+                        key={index}
+                        className="cursor-pointer"
+                        onClick={() => handleRowClick(holding)}
+                      >
                         <TableCell>{holding.symbol}</TableCell>
                         <TableCell>{holding.name}</TableCell>
                         <TableCell>{holding.shares}</TableCell>

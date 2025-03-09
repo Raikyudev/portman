@@ -126,6 +126,7 @@ export async function GET(request: Request) {
       const value = pa.quantity * asset.price; // Current value based on latest price
 
       holdingsMap.set(asset._id.toString(), {
+        id: asset._id.toString(),
         name: asset.name,
         symbol: asset.symbol,
         shares: pa.quantity,
@@ -165,6 +166,7 @@ export async function GET(request: Request) {
 
 // Define the shape of the response data to match TopHoldings component
 interface Holding {
+  id: string;
   name: string;
   symbol: string;
   shares: number;
