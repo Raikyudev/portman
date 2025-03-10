@@ -122,7 +122,7 @@ export default function PortfolioAllocation({
         <CardTitle>Portfolio Allocation</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-row items-center gap-4 w-full">
+        <div className="flex flex-col lg:flex-row items-center gap-4 w-full">
           <div className="w-1/2 p-0 m-0 flex justify-center w-full">
             {selectedAssetId ? (
               <AssetPriceChart

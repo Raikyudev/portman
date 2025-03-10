@@ -1,7 +1,7 @@
-// src/pages/portfolio.tsx
+// src/app/portfolio/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { IExtendedPortfolio } from "@/types/portfolio";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import PerformanceChart from "@/components/PerformanceChart";
@@ -12,6 +12,7 @@ import AddTransactionButton from "@/components/AddTransactionButton";
 import { Button } from "@/components/ui/button";
 import PortfolioAllocation from "@/components/PortfolioAllocation";
 import AddPortfolioPopover from "@/components/AddPortfolioPopover";
+import { useSearchParams } from "next/navigation";
 
 interface IndividualHistoryEntry {
   portfolio_id: string;
@@ -30,104 +31,96 @@ export default function Page() {
     percentage: 0,
     amount: 0,
   });
-
-  const fetchPortfoliosAndHistory = useCallback(
-    async (newPortfolioId?: string, retryCount = 0) => {
-      const maxRetries = 3;
-      setLoading(true);
-      try {
-        // Step 1: Fetch the list of portfolios
-        const portfolioResponse = await fetch("/api/portfolio", {
-          credentials: "include",
-        });
-        if (!portfolioResponse.ok) {
-          console.error("Error fetching portfolios");
-          console.error("Failed to fetch portfolios");
-        }
-        const portfolioData = await portfolioResponse.json();
-        console.log("Raw Portfolio Data:", portfolioData);
-
-        // Step 2: Fetch history for each portfolio individually
-        const updatedPortfolios: IExtendedPortfolio[] = await Promise.all(
-          portfolioData.map(async (portfolio: IExtendedPortfolio) => {
-            const historyResponse = await fetch(
-              `/api/portfolio-history/individual?range=YTD&portfolio_id=${portfolio._id}`,
-              {
-                credentials: "include",
-              },
-            );
-            if (!historyResponse.ok) {
-              console.error(
-                `Error fetching history for portfolio ${portfolio._id}`,
-              );
-              return { ...portfolio, port_total_value: 0 };
-            }
-            const { data: historyData }: { data: IndividualHistoryEntry[] } =
-              await historyResponse.json();
-            console.log(`History for portfolio ${portfolio._id}:`, historyData);
-
-            const latestValue =
-              historyData.length > 0
-                ? historyData[historyData.length - 1].port_total_value
-                : 0;
-            return { ...portfolio, port_total_value: latestValue };
-          }),
-        );
-
-        // Step 3: Sort portfolios by port_total_value in descending order
-        updatedPortfolios.sort(
-          (a, b) => b.port_total_value - a.port_total_value,
-        );
-
-        // Step 4: Update the portfolios state
-        setPortfolios(updatedPortfolios);
-        console.log(
-          "Updated Portfolios (sorted by total value):",
-          updatedPortfolios,
-        );
-
-        // Step 5: Set the expanded portfolio
-        if (newPortfolioId) {
-          console.log("Looking for new portfolio with ID:", newPortfolioId);
-          console.log(
-            "Portfolio IDs in updatedPortfolios:",
-            updatedPortfolios.map((p) => p._id),
-          );
-          const newPortfolio = updatedPortfolios.find(
-            (p) => String(p._id) === String(newPortfolioId),
-          );
-          if (newPortfolio) {
-            console.log(`Selecting new portfolio: ${newPortfolioId}`);
-            setExpandedPortfolio(newPortfolioId);
-          } else if (retryCount < maxRetries) {
-            console.warn(
-              `New portfolio with ID ${newPortfolioId} not found in fetched data. Retrying (${retryCount + 1}/${maxRetries})...`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            return fetchPortfoliosAndHistory(newPortfolioId, retryCount + 1);
-          } else {
-            console.error(
-              `New portfolio with ID ${newPortfolioId} not found after ${maxRetries} retries.`,
-            );
-            if (updatedPortfolios.length > 0) {
-              setExpandedPortfolio(updatedPortfolios[0]._id.toString());
-            }
-          }
-        } else if (updatedPortfolios.length > 0) {
-          setExpandedPortfolio(updatedPortfolios[0]._id.toString());
-        }
-      } catch (error) {
-        console.error("Error fetching portfolios and history:", error);
-      } finally {
-        setLoading(false);
+  const searchParams = useSearchParams();
+  const portfolioId = searchParams.get("id");
+  console.log("Portfolio ID:", portfolioId);
+  const fetchPortfoliosAndHistory = useCallback(async () => {
+    try {
+      // Step 1: Fetch the list of portfolios
+      const queryParam = portfolioId ? `?id=${portfolioId}` : "";
+      const portfolioResponse = await fetch(`/api/portfolio${queryParam}`, {
+        credentials: "include",
+      });
+      if (!portfolioResponse.ok) {
+        console.error("Error fetching portfolios");
+        console.error("Failed to fetch portfolios");
       }
-    },
-    [],
-  );
+      const portfolioDataFull = await portfolioResponse.json();
+      console.log("Raw Portfolio Data:", portfolioDataFull);
+      const portfolioData = portfolioId
+        ? portfolioDataFull.portfolios
+        : portfolioDataFull;
+      const portfolioDataId = portfolioDataFull.portfolioId || false;
+
+      // Step 2: Fetch history for each portfolio individually
+      const updatedPortfolios: IExtendedPortfolio[] = await Promise.all(
+        portfolioData.map(async (portfolio: IExtendedPortfolio) => {
+          const historyResponse = await fetch(
+            `/api/portfolio-history/individual?range=YTD&portfolio_id=${portfolio._id}`,
+            {
+              credentials: "include",
+            },
+          );
+          if (!historyResponse.ok) {
+            console.error(
+              `Error fetching history for portfolio ${portfolio._id}`,
+            );
+            return { ...portfolio, port_total_value: 0 };
+          }
+          const { data: historyData }: { data: IndividualHistoryEntry[] } =
+            await historyResponse.json();
+          console.log(`History for portfolio ${portfolio._id}:`, historyData);
+
+          const latestValue =
+            historyData.length > 0
+              ? historyData[historyData.length - 1].port_total_value
+              : 0;
+          return { ...portfolio, port_total_value: latestValue };
+        }),
+      );
+
+      // Step 3: Sort portfolios by port_total_value in descending order
+      updatedPortfolios.sort((a, b) => b.port_total_value - a.port_total_value);
+
+      // Step 4: Update the portfolios state
+      setPortfolios(updatedPortfolios);
+      console.log(
+        "Updated Portfolios (sorted by total value):",
+        updatedPortfolios,
+      );
+
+      // Step 5: Set the expanded portfolio
+      if (portfolioDataId) {
+        console.log("Looking for new portfolio with ID:", portfolioDataId);
+        console.log(
+          "Portfolio IDs in updatedPortfolios:",
+          updatedPortfolios.map((p) => p._id),
+        );
+        const newPortfolio = updatedPortfolios.find(
+          (p) => String(p._id) === String(portfolioDataId),
+        );
+        if (newPortfolio) {
+          console.log(`Selecting new portfolio: ${portfolioDataId}`);
+          setExpandedPortfolio(portfolioDataId);
+        } else {
+          console.error(`New portfolio with ID ${portfolioDataId} not found`);
+          if (updatedPortfolios.length > 0) {
+            setExpandedPortfolio(updatedPortfolios[0]._id.toString());
+          }
+        }
+      } else if (updatedPortfolios.length > 0) {
+        setExpandedPortfolio(updatedPortfolios[0]._id.toString());
+      }
+    } catch (error) {
+      console.error("Error fetching portfolios and history:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [portfolioId]);
 
   useEffect(() => {
     fetchPortfoliosAndHistory();
-  }, [fetchPortfoliosAndHistory]);
+  }, [fetchPortfoliosAndHistory, portfolioId]);
 
   const handlePerformanceUpdate = useCallback(
     (value: number, profitData: { percentage: number; amount: number }) => {
@@ -161,24 +154,6 @@ export default function Page() {
       expandedPortfolio,
     );
   }, [portfolios, expandedPortfolio]);
-  const handlePortfolioCreated = useCallback(
-    (newPortfolioId: string) => {
-      console.log("Handling portfolio created with ID:", newPortfolioId);
-      fetchPortfoliosAndHistory(newPortfolioId);
-      setTimeout(() => {
-        if (!portfolios.find((p) => String(p._id) === String(newPortfolioId))) {
-          console.warn("Forcing selection after delay:", newPortfolioId);
-          setExpandedPortfolio(newPortfolioId);
-        }
-      }, 3000);
-    },
-    [portfolios, fetchPortfoliosAndHistory],
-  );
-
-  const callbackRef = useRef<(id: string) => void>(() => {});
-  useEffect(() => {
-    callbackRef.current = handlePortfolioCreated;
-  }, [handlePortfolioCreated]);
 
   if (loading)
     return <div className="text-white">Loading portfolio data...</div>;
@@ -204,7 +179,6 @@ export default function Page() {
                 initialPortfolioId={expandedPortfolio ?? undefined}
                 portfolioValue={portfolioValue}
                 profit={profit}
-                onPortfoliosUpdate={() => fetchPortfoliosAndHistory()} // Pass the refetch function
               />
               {expandedPortfolio ? (
                 <AddTransactionButton
@@ -264,7 +238,6 @@ export default function Page() {
                 Create new portfolio
               </Button>
             }
-            onPortfolioCreated={handlePortfolioCreated}
           />
         </div>
       )}

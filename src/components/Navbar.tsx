@@ -115,7 +115,15 @@ export default function Navbar() {
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>
-
+                  <NavigationMenuItem>
+                    <Link href="/market" legacyBehavior passHref>
+                      <NavigationMenuLink
+                        className={navigationMenuTriggerStyle()}
+                      >
+                        Market
+                      </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="#" legacyBehavior passHref>
                       <NavigationMenuLink

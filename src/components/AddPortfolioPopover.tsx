@@ -14,6 +14,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 const portfolioSchema = z.object({
   name: z.string().min(3, "Portfolio name must be at least 3 characters long"),
@@ -23,12 +24,10 @@ const portfolioSchema = z.object({
 type PortfolioFormData = z.infer<typeof portfolioSchema>;
 
 interface AddPortfolioPopoverProps {
-  onPortfolioCreated: (newPortfolioId: string) => void;
   trigger: React.ReactNode;
 }
 
 export default function AddPortfolioPopover({
-  onPortfolioCreated,
   trigger,
 }: AddPortfolioPopoverProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -43,6 +42,8 @@ export default function AddPortfolioPopover({
     resolver: zodResolver(portfolioSchema),
     mode: "onChange",
   });
+
+  const router = useRouter();
 
   const onSubmit = async (data: PortfolioFormData) => {
     setError(null);
@@ -68,13 +69,16 @@ export default function AddPortfolioPopover({
 
       // Successfully created portfolio
       console.log("New portfolio ID:", result._id);
-      // Call onPortfolioCreated before closing the popover
-      onPortfolioCreated(result._id.toString());
-      console.log("Called onPortfolioCreated with ID:", result._id);
 
       // Close the popover after callback
       setPopoverOpen(false);
       reset();
+
+      router.push("/portfolio?id=" + result._id.toString());
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000); // Small delay to allow URL update
     } catch (error) {
       const errorMessage =
         (error as Error).message || "An unexpected error occurred.";

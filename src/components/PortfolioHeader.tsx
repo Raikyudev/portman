@@ -12,7 +12,6 @@ interface PortfolioHeaderProps {
   selectedPortfolioId?: string;
   portfolioValue: number;
   profit: { percentage: number; amount: number };
-  onPortfoliosUpdate: (newPortfolios: IExtendedPortfolio[]) => void;
 }
 
 export default function PortfolioHeader({
@@ -21,7 +20,6 @@ export default function PortfolioHeader({
   initialPortfolioId,
   portfolioValue,
   profit,
-  onPortfoliosUpdate,
 }: PortfolioHeaderProps) {
   const session = useSession();
 
@@ -39,7 +37,6 @@ export default function PortfolioHeader({
           portfolios={portfolios}
           onPortfolioSelect={onPortfolioSelect}
           initialPortfolioId={initialPortfolioId}
-          onPortfoliosUpdate={onPortfoliosUpdate}
         />
       </div>
       <div className={`flex items-center no-border space-x-2`}>

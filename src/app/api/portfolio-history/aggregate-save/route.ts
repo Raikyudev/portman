@@ -286,12 +286,10 @@ export async function POST(request: Request) {
             port_total_value: port_total_value || 0,
           });
           await newHistoryEntry.save();
-          console.log("New history entry saved for date:", date);
           overallResult.push(newHistoryEntry);
         } else if (forceUpdate) {
           existing.port_total_value = port_total_value || 0;
           await existing.save();
-          console.log("Existing entry updated for date:", date);
           overallResult.push(existing);
         }
       }

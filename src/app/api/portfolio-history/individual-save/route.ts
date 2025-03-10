@@ -133,9 +133,6 @@ export async function POST(request: Request) {
         for (const [newDate, prices] of Object.entries(newPrices)) {
           stockPrices[newDate] = stockPrices[newDate] || {};
           stockPrices[newDate][symbol] = prices[symbol] || 0;
-          console.log(
-            `Initial price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
-          );
         }
       } catch (error) {
         console.error(`Error fetching initial prices for ${symbol}:`, error);
@@ -164,14 +161,10 @@ export async function POST(request: Request) {
           !stockPrices[date].hasOwnProperty(symbol) ||
           stockPrices[date][symbol] === 0,
       );
-      console.log("Missing symbols for", date, ":", missingSymbols);
 
       if (missingSymbols.length > 0) {
         for (const symbol of missingSymbols) {
           const startDateForSymbol = symbolEarliestDates[symbol] || fromDate;
-          console.log(
-            `Fetching prices for ${symbol} from ${startDateForSymbol} to ${date}...`,
-          );
           try {
             const newPrices = await getStockPrices(
               { [symbol]: holdingsForDate[symbol] },
@@ -181,9 +174,6 @@ export async function POST(request: Request) {
             for (const [newDate, prices] of Object.entries(newPrices)) {
               stockPrices[newDate] = stockPrices[newDate] || {};
               stockPrices[newDate][symbol] = prices[symbol] || 0;
-              console.log(
-                `Updated price for ${symbol} on ${newDate}: ${stockPrices[newDate][symbol]}`,
-              );
             }
           } catch (error) {
             console.error(
@@ -195,7 +185,6 @@ export async function POST(request: Request) {
       }
 
       const pricesForDate = stockPrices[date] || {};
-      console.log("Stock prices for", date, ":", pricesForDate);
 
       if (Object.keys(pricesForDate).length === 0) {
         console.log("No prices available for date, skipping:", date);
@@ -217,7 +206,6 @@ export async function POST(request: Request) {
         holdingsForDate,
         pricesForDate,
       );
-      console.log("Portfolio value for date", date, ":", port_total_value);
 
       const existing = await PortfolioHistory.findOne({
         portfolio_id,
@@ -230,7 +218,6 @@ export async function POST(request: Request) {
           port_total_value: port_total_value || 0,
         });
         await newHistoryEntry.save();
-        console.log("New history entry saved for date:", date);
         newHistory.push(newHistoryEntry);
       } else if (forceUpdate) {
         existing.port_total_value = port_total_value || 0;

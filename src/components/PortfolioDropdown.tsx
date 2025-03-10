@@ -15,14 +15,12 @@ interface PortfolioDropdownProps {
   portfolios: IExtendedPortfolio[];
   onPortfolioSelect: (portfolioId: string) => void;
   initialPortfolioId?: string;
-  onPortfoliosUpdate: (newPortfolios: IExtendedPortfolio[]) => void;
 }
 
 export default function PortfolioDropdown({
   portfolios,
   onPortfolioSelect,
   initialPortfolioId,
-  onPortfoliosUpdate,
 }: PortfolioDropdownProps) {
   const selectedPortfolioId =
     initialPortfolioId || portfolios[0]?._id.toString();
@@ -87,7 +85,6 @@ export default function PortfolioDropdown({
                 Create new portfolio
               </Button>
             }
-            onPortfolioCreated={() => onPortfoliosUpdate([])}
           />
         </div>
       </DropdownMenuContent>

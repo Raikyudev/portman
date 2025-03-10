@@ -56,7 +56,7 @@ export default function Page() {
         }
 
         if (response.status === 403) {
-          router.push("/portfolio");
+          router.push("/portfolio?id=" + params.id);
         }
 
         setIsPortfolioOwner(true);
@@ -190,9 +190,8 @@ export default function Page() {
 
       reset();
       setError(null);
-      setTimeout(() => {
-        router.push(`/portfolio`);
-      }, 1000);
+
+      router.push(`/portfolio?id=${params.id}`);
     } catch (error) {
       setError("Error processing transaction and history.");
       console.error("Overall error:", error);

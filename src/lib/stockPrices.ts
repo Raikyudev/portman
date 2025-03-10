@@ -60,9 +60,6 @@ export async function getStockPrices(
       stockPrices[date] = {};
       for (const symbol of symbols) {
         stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
-        console.log(
-          `Fallback price for ${symbol} on ${date}: ${stockPrices[date][symbol]}`,
-        );
       }
     }
   }
@@ -240,21 +237,30 @@ export async function getFullPriceHistory(
   endDate: string,
 ): Promise<PriceEntry[]> {
   try {
-    const results = await yahooFinance.chart(symbol, {
-      period1: startDate,
-      period2: endDate,
-      interval: "1d",
-    });
-
-    const priceHistory: PriceEntry[] = results.quotes.map(
-      (quote: { date: Date; close: number | null }) => ({
-        date: quote.date.toISOString().split("T")[0],
-        price: quote.close || 0,
-      }),
-    );
-
-    console.log(`Fetched full price history for ${symbol}:`, priceHistory);
-    return priceHistory;
+    if (startDate === endDate) {
+      const quote = await yahooFinance.quote(symbol);
+      const priceHistory: PriceEntry[] = [];
+      priceHistory.push({
+        date: startDate,
+        price: quote.regularMarketPrice ?? 0,
+      });
+      console.log(`Fetched full price history for ${symbol}:`, priceHistory);
+      return priceHistory;
+    } else {
+      const results = await yahooFinance.chart(symbol, {
+        period1: startDate === endDate ? startDate + 1 : startDate,
+        period2: endDate,
+        interval: "1d",
+      });
+      const priceHistory: PriceEntry[] = results.quotes.map(
+        (quote: { date: Date; close: number | null }) => ({
+          date: quote.date.toISOString().split("T")[0],
+          price: quote.close || 0,
+        }),
+      );
+      console.log(`Fetched full price history for ${symbol}:`, priceHistory);
+      return priceHistory;
+    }
   } catch (error) {
     console.error("Error fetching full price history:", error);
     return [];
