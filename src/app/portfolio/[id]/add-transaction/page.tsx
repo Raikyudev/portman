@@ -80,7 +80,7 @@ export default function Page() {
         const response = await fetch(`/api/assets/search?query=${searchQuery}`);
         if (response.ok) {
           const data = await response.json();
-          setSearchResults(data);
+          setSearchResults(data.assets);
         }
       } catch (error) {
         console.error("Error fetching assets:", error);
@@ -214,8 +214,9 @@ export default function Page() {
           <label>Search Asset</label>
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) =>
+              setSearchQuery(e.target.value + "&limit=10&page=1")
+            }
             placeholder="Search for an asset by a symbol or name"
           />
           {searchResults.length > 0 && (
@@ -225,7 +226,6 @@ export default function Page() {
                   key={asset._id}
                   onClick={() => {
                     setSelectedAsset(asset);
-                    setSearchQuery(asset.symbol);
                     setSearchResults([]); //Hide the results after selection
                     setValue("asset_id", asset._id);
                   }}

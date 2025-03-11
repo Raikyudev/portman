@@ -146,7 +146,25 @@ async function fetchPriceForDay(
     return (await getClosestPreviousPrice(symbol, currentDate)) || 0;
   }
 }
+export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
+  try {
+    const currentDate = new Date().toISOString().split("T")[0];
 
+    // Attempt to get current price using quote
+    const quote = await yahooFinance.quote(symbol);
+    const currentPrice = quote.regularMarketPrice ?? 0;
+
+    if (currentPrice > 0) {
+      return currentPrice;
+    }
+
+    return await getClosestPreviousPrice(symbol, currentDate);
+  } catch (error) {
+    console.error(`Error fetching today's price for ${symbol}:`, error);
+    const currentDate = new Date().toISOString().split("T")[0];
+    return await getClosestPreviousPrice(symbol, currentDate);
+  }
+}
 export async function getClosestPreviousPrice(
   symbol: string,
   currentDate: string,
@@ -202,12 +220,8 @@ export async function getClosestPreviousPrice(
 
 export async function getPriceChange(symbol: string): Promise<number> {
   try {
-    console.log(`Fetching price change for symbol: ${symbol}`);
     const quote = await yahooFinance.quote(symbol);
     if (quote.regularMarketChangePercent) {
-      console.log(
-        `Price change for ${symbol}: ${quote.regularMarketChangePercent}%`,
-      );
       return quote.regularMarketChangePercent;
     } else {
       console.warn(

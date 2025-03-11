@@ -32,7 +32,8 @@ const assetSchema: Schema = new mongoose.Schema({
     required: true,
   },
 });
-
+assetSchema.index({ symbol: "text", name: "text" }); // Text index for full-text search
+assetSchema.index({ name: 1 }); // Index for name matching
 const Asset =
   mongoose.models.Asset || mongoose.model<IAsset>("Asset", assetSchema);
 
