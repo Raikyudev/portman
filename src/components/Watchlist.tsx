@@ -1,4 +1,3 @@
-// src/components/Watchlist.tsx
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -12,14 +11,20 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface WatchlistItem {
+  _id: string;
+  asset_id: string;
   symbol: string;
   price: number;
   change: string;
 }
 
-export default function Watchlist() {
+interface WatchlistProps {
+  setWatchlist?: (watchlist: WatchlistItem[]) => void; // Make setWatchlist optional with '?'
+}
+
+export default function Watchlist({ setWatchlist }: WatchlistProps) {
   const { data: session, status } = useSession();
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [watchlistLocal, setWatchlistLocal] = useState<WatchlistItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,17 +52,27 @@ export default function Watchlist() {
         }
 
         const data = await response.json();
-        setWatchlist(data);
+        // Ensure data is an array
+        const watchlistData = Array.isArray(data) ? data : [];
+        setWatchlistLocal(watchlistData);
+        // Call setWatchlist only if it’s provided
+        if (setWatchlist) {
+          setWatchlist(watchlistData);
+        }
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error occurred");
+        setWatchlistLocal([]);
+        if (setWatchlist) {
+          setWatchlist([]);
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchWatchlist().then(() => {});
-  }, [status, session]);
+    fetchWatchlist();
+  }, [status, session, setWatchlist]);
 
   if (loading) {
     return (
@@ -88,8 +103,8 @@ export default function Watchlist() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {watchlist.length > 0 ? (
-              watchlist.map((item, index) => (
+            {watchlistLocal.length > 0 ? (
+              watchlistLocal.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.symbol}</TableCell>
                   <TableCell>${item.price.toLocaleString()}</TableCell>

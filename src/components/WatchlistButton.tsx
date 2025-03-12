@@ -1,52 +1,69 @@
-import { useState, useEffect } from "react";
+"use client";
+
+import Image from "next/image";
+import { useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface WatchlistButtonProps {
-  assetId: string;
+  symbol: string;
+  watchlist: string[]; // Array of symbols in the watchlist
+  onToggleWatchlist: () => Promise<void>; // Updated to accept a function
 }
 
-export default function WatchlistButton({ assetId }: WatchlistButtonProps) {
-  const [inWatchlist, setInWatchlist] = useState<boolean>(false);
+export default function WatchlistButton({
+  symbol,
+  watchlist,
+  onToggleWatchlist,
+}: WatchlistButtonProps) {
+  const isInWatchlist = watchlist.includes(symbol);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchWatchlistStatus = async () => {
-      try {
-        const response = await fetch("/api/watchlist");
-        const data = await response.json();
-        console.log("WatchButton data:", data);
-        // Check if assetId matches any asset_id in the response array
-        const isInList =
-          Array.isArray(data) && data.some((item) => item.asset_id === assetId);
-        setInWatchlist(isInList);
-      } catch (error) {
-        console.error("Error fetching watchlist status:", error);
-        setInWatchlist(false); // Default to false on error
-      }
-    };
-
-    fetchWatchlistStatus().then(() => {});
-  }, [assetId]);
-
-  const toggleWatchlist = async () => {
+  const handleToggle = useCallback(async () => {
+    setIsLoading(true);
     try {
-      if (inWatchlist) {
-        await fetch(`/api/watchlist?id=${assetId}`, { method: "DELETE" });
-        setInWatchlist(false);
-      } else {
-        await fetch("/api/watchlist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ asset_id: assetId }),
-        });
-        setInWatchlist(true);
-      }
+      await onToggleWatchlist();
     } catch (error) {
       console.error("Error toggling watchlist:", error);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [onToggleWatchlist]);
 
   return (
-    <button onClick={toggleWatchlist}>
-      {inWatchlist ? "Remove from Watchlist" : "Add to Watchlist"}
-    </button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggle}
+            disabled={isLoading}
+            aria-label={
+              isInWatchlist ? "Remove from watchlist" : "Add to watchlist"
+            }
+            className="hover:bg-gray-100 rounded-full"
+          >
+            <Image
+              src={`/white-${isInWatchlist ? "filled" : "empty"}-star.svg`}
+              alt={isInWatchlist ? "Filled star" : "Empty star"}
+              width={24}
+              height={24}
+              className="transition-opacity duration-200"
+            />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent
+          className={"text-white bg-true-black border border-red"}
+        >
+          <p>{isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

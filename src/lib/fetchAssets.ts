@@ -28,7 +28,6 @@ const exchangeCurrencyMap: { [key: string]: string } = {
   Tokyo: "JPY",
   "Hong Kong": "HKD",
   Shanghai: "CNY",
-  "Other OTC": "USD",
 };
 
 export default async function fetchAssets() {
@@ -45,8 +44,12 @@ export default async function fetchAssets() {
       return;
     }
 
-    const stocks: FetchedAsset[] = (await response.json()) as FetchedAsset[];
+    let stocks: FetchedAsset[] = (await response.json()) as FetchedAsset[];
     console.log(`Fetched ${stocks.length} assets from API.`);
+
+    stocks = stocks.filter(
+      (stock) => stock.exchangeShortName in exchangeCurrencyMap,
+    );
 
     // Preload all currency rates
     console.log("Fetching all currency rates...");
@@ -59,7 +62,8 @@ export default async function fetchAssets() {
 
     const bulkOps = await Promise.all(
       stocks.map(async (stock) => {
-        const stockCurrency = exchangeCurrencyMap[stock.exchange] || "USD";
+        const stockCurrency =
+          exchangeCurrencyMap[stock.exchangeShortName] || "USD";
 
         // Convert price to USD by dividing by the exchange rate (rate is foreign currency per USD)
         let convertedPrice = stock.price || 0;

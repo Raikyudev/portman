@@ -1,7 +1,6 @@
-// app/market/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ProtectedLayout from "@/app/ProtectedLayout";
 import { useSession } from "next-auth/react";
 import Watchlist from "@/components/Watchlist";
@@ -26,8 +25,53 @@ export default function MarketPage() {
   const [topLosers, setTopLosers] = useState<
     { symbol: string; price: number; change: string }[]
   >([]);
+  const [watchlist, setWatchlist] = useState<
+    {
+      _id: string;
+      asset_id: string;
+      symbol: string;
+      price: number;
+      change: string;
+    }[]
+  >([]); // Initialize as empty array
 
-  // Fetch assets for the main market area (dependent on query and pagination)
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchAssets = useCallback(async () => {
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/assets/search?query=${encodeURIComponent(query)}&page=${currentPage}&limit=50&market=true`,
+        {
+          credentials: "include",
+          signal: controller.signal,
+        },
+      );
+      if (!response.ok) console.error("Failed to fetch assets");
+      const data = await response.json();
+      setAssets(data.assets || []);
+      setTotalPages(Math.ceil((data.total || 1) / 50));
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("Fetch aborted");
+        return;
+      }
+      console.error("Error fetching assets:", error);
+      setError(
+        error instanceof Error ? error.message : "Unknown error occurred",
+      );
+    } finally {
+      setLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [query, currentPage]);
+
   useEffect(() => {
     if (status === "loading") return;
 
@@ -39,25 +83,25 @@ export default function MarketPage() {
       setError("Please log in to view the market page.");
       return;
     }
-    fetchAssets();
-  }, [status, session, currentPage, query]);
 
-  // Fetch top gainers and losers (independent of query and pagination)
+    fetchAssets();
+
+    return () => {
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, [status, session, fetchAssets]);
+
   useEffect(() => {
     if (status === "loading") return;
 
-    if (status === "unauthenticated" || !session?.user?.id) {
-      return; // Error already handled in the other useEffect
-    }
+    if (status === "unauthenticated" || !session?.user?.id) return;
 
     const fetchMarketData = async () => {
       try {
         const response = await fetch("/api/market/top", {
           credentials: "include",
         });
-        if (!response.ok) {
-          console.error("Failed to fetch market data");
-        }
+        if (!response.ok) console.error("Failed to fetch market data");
         const { topGainers, topLosers } = await response.json();
         setTopGainers(topGainers || []);
         setTopLosers(topLosers || []);
@@ -71,42 +115,58 @@ export default function MarketPage() {
     };
 
     fetchMarketData();
-  }, [status, session]); // Only re-run when session or status changes
-
-  const fetchAssets = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        `/api/assets/search?query=${encodeURIComponent(query)}&page=${currentPage}&limit=100&market=true`,
-        {
-          credentials: "include",
-        },
-      );
-      if (!response.ok) {
-        console.error("Failed to fetch assets");
-      }
-      const data = await response.json();
-      setAssets(data.assets || []);
-      setTotalPages(data.totalPages || 1);
-    } catch (error) {
-      console.error("Error fetching assets:", error);
-      setError(
-        error instanceof Error ? error.message : "Unknown error occurred",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [status, session]);
 
   const handleSearch = () => {
-    setCurrentPage(1); // Reset to the first page on search
-    fetchAssets(); // Trigger data fetch based on query
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+
+  const handleToggleWatchlist = useCallback(
+    async (assetId: string, add: boolean) => {
+      try {
+        if (add) {
+          const response = await fetch("/api/watchlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ asset_id: assetId }),
+          });
+          if (!response.ok) console.error("Failed to add to watchlist");
+          const data = await response.json();
+          if (data.message) {
+            // Fetch updated watchlist to sync state
+            const watchlistResponse = await fetch("/api/watchlist", {
+              credentials: "include",
+            });
+            const watchlistData = await watchlistResponse.json();
+            // Ensure watchlistData is an array
+            setWatchlist(Array.isArray(watchlistData) ? watchlistData : []);
+          }
+        } else {
+          const response = await fetch(`/api/watchlist?id=${assetId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!response.ok) console.error("Failed to remove from watchlist");
+          const watchlistResponse = await fetch("/api/watchlist", {
+            credentials: "include",
+          });
+          const watchlistData = await watchlistResponse.json();
+          // Ensure watchlistData is an array
+          setWatchlist(Array.isArray(watchlistData) ? watchlistData : []);
+        }
+      } catch (error) {
+        console.error("Error toggling watchlist:", error);
+        // Ensure watchlist remains an array even on error
+        setWatchlist([]);
+      }
+    },
+    [],
+  );
 
   if (status === "loading") return <div>Loading...</div>;
 
@@ -119,23 +179,18 @@ export default function MarketPage() {
           <div className="text-red-500 mb-4">{marketDataError}</div>
         )}
 
-        {/* Search Bar */}
         <SearchBar query={query} setQuery={setQuery} onSearch={handleSearch} />
 
-        {/* Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Market Overview */}
           <div className="col-span-1">
             <div className="bg-true-black text-white rounded-lg p-4 h-full">
               <h2 className="text-lg font-semibold mb-2">
                 Market Overview (Major Indices)
               </h2>
-              {/* Placeholder content - replace with actual indices data if needed */}
               <p>Please enter a query to search for assets.</p>
             </div>
           </div>
 
-          {/* Main Area */}
           <div className="col-span-1 lg:col-span-3 row-span-2">
             <MainMarketArea
               assets={assets}
@@ -143,20 +198,19 @@ export default function MarketPage() {
               totalPages={totalPages}
               loading={loading}
               onPageChange={handlePageChange}
+              watchlist={watchlist}
+              onToggleWatchlist={handleToggleWatchlist}
             />
           </div>
 
-          {/* Top Gainers */}
           <div className="col-span-1">
             <TopGainers topGainers={topGainers} />
           </div>
 
-          {/* Watchlist */}
           <div className="col-span-1">
-            <Watchlist />
+            <Watchlist setWatchlist={setWatchlist} />
           </div>
 
-          {/* Top Losers */}
           <div className="col-span-1">
             <TopLosers topLosers={topLosers} />
           </div>
