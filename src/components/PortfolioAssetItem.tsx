@@ -1,5 +1,4 @@
 import { IExtendedPortfolioAsset } from "@/types/portfolio";
-import WatchlistButton from "./WatchlistButton";
 
 interface PortfolioAssetItemProps {
   asset: IExtendedPortfolioAsset;
@@ -14,7 +13,6 @@ export default function PortfolioAssetItem({ asset }: PortfolioAssetItemProps) {
       <br />
       <span>Quantity: {asset.quantity}</span> |{" "}
       <span>Avg Buy Price: {asset.avg_buy_price}</span>
-      <WatchlistButton assetId={asset.asset_id.toString()} />
     </li>
   );
 }
