@@ -173,13 +173,18 @@ export default function MarketPage() {
   return (
     <ProtectedLayout>
       <div className="container mx-auto p-4 no-border">
-        <h1 className="text-2xl font-bold mb-4">Market</h1>
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        <div className="flex items-center bg-true-black rounded-lg p-4 mb-2">
+          <h1 className="text-2xl font-bold">Market</h1>
+          <div className="flex-1 flex justify-center">
+            <div className="w-1/3">
+              <SearchBar query={query} setQuery={setQuery} onSearch={handleSearch} />
+            </div>
+          </div>
+        </div>
+        {error && <div className="text-red-500">{error}</div>}
         {marketDataError && (
-          <div className="text-red-500 mb-4">{marketDataError}</div>
+          <div className="text-red-500">{marketDataError}</div>
         )}
-
-        <SearchBar query={query} setQuery={setQuery} onSearch={handleSearch} />
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="col-span-1">

@@ -19,6 +19,9 @@ import {
   PaginationLink,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import WhiteFilledStar from "../../public/white-filled-star.svg";
+import Image from "next/image";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MainMarketAreaProps {
   assets: IExtendedAsset[];
@@ -120,8 +123,17 @@ export default function MainMarketArea({
 
   return (
     <div className="rounded-lg border shadow-sm bg-true-black">
-      <div className="p-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Market Assets</h2>
+      <div className="flex justify-end gap-4 p-4">
+        <div className="bg-black p-4 text-gray text-sm rounded-lg font-semibold">Choose an asset to see more details</div>
+        <div className="flex gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold"><Image
+            src={WhiteFilledStar}
+            alt="White star icon"
+            width={18}
+            height={18}
+            className="w-5 h-5"
+        />  to add to the watchlist</div>
+      </div>
+      <div>
         {totalPages > 1 && (
           <Pagination className="ml-auto">
             <PaginationContent>{renderPaginationItems()}</PaginationContent>
@@ -133,7 +145,8 @@ export default function MainMarketArea({
         <div className="text-center py-4">No assets found.</div>
       )}
       {!loading && assets.length > 0 && (
-        <div className="overflow-x-auto">
+          <ScrollArea className="h-[calc(87vh-200px)] w-full">
+        <div className="overflow-x-auto p-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -172,6 +185,7 @@ export default function MainMarketArea({
             </TableBody>
           </Table>
         </div>
+            </ScrollArea>
       )}
     </div>
   );

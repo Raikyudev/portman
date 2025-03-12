@@ -31,18 +31,18 @@ export default function SearchBar({
   };
 
   return (
-    <div className="mb-4 flex w-full max-w-md">
+    <div className=" flex w-full max-w-md bg-black rounded-lg">
       <Input
         type="text"
         placeholder="Search assets..."
         value={localQuery}
         onChange={(e) => setLocalQuery(e.target.value)}
         onKeyDown={handleKeyDown} // Changed from onKeyPress to onKeyDown
-        className="flex-1 bg-true-black text-white border-gray-700 focus:border-blue-500"
+        className="no-border flex-1 bg-black text-white"
       />
       <Button
         onClick={handleSearch}
-        className="ml-2 bg-blue-600 hover:bg-blue-700 text-white"
+        className="ml-2 bg-black hover:bg-red text-white"
       >
         <Search className="h-4 w-4" />
       </Button>

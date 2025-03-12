@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface WatchlistItem {
   _id: string;
@@ -88,12 +89,13 @@ export default function Watchlist({ setWatchlist }: WatchlistProps) {
   }
 
   return (
-    <Card>
+    <Card className="bg-true-black">
       <CardHeader>
         <CardTitle>Your Watchlist</CardTitle>
       </CardHeader>
       <CardContent className="h-auto">
         {error && <div className="text-red mb-4">{error}</div>}
+        <ScrollArea className="h-[calc(30vh-10px)] w-full">
         <Table>
           <TableHeader>
             <TableRow>
@@ -124,6 +126,7 @@ export default function Watchlist({ setWatchlist }: WatchlistProps) {
             )}
           </TableBody>
         </Table>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

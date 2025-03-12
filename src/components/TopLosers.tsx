@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type TopLoser = {
   symbol: string;
@@ -22,11 +23,12 @@ interface TopLosersProps {
 
 export default function TopLosers({ topLosers }: TopLosersProps) {
   return (
-    <Card>
+    <Card className="bg-true-black">
       <CardHeader>
         <CardTitle>Top Losers Today</CardTitle>
       </CardHeader>
       <CardContent className="h-auto">
+        <ScrollArea className="h-[calc(30vh-10px)] w-full">
         <Table>
           <TableHeader>
             <TableRow>
@@ -51,6 +53,7 @@ export default function TopLosers({ topLosers }: TopLosersProps) {
             )}
           </TableBody>
         </Table>
+        </ScrollArea>
       </CardContent>
     </Card>
   );
