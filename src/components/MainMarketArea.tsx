@@ -10,7 +10,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 interface MainMarketAreaProps {
   assets: IExtendedAsset[];
@@ -43,9 +51,83 @@ export default function MainMarketArea({
     }
   };
 
+  const renderPaginationItems = () => {
+    const items = [];
+    const startPage = Math.max(1, currentPage - 1); // One page before current
+    const endPage = Math.min(totalPages, currentPage + 1); // One page after current
+
+    // Add "Previous" button
+    items.push(
+      <PaginationItem key="previous">
+        <PaginationPrevious
+          onClick={() => handlePageChange(currentPage - 1)}
+          className={
+            (currentPage === 1 ? "disabled-class hover:bg-true-black" : "") +
+            "cursor-pointer"
+          }
+        />
+      </PaginationItem>,
+    );
+
+    // Add ellipsis before if there are pages before startPage
+    if (startPage > 1) {
+      items.push(
+        <PaginationItem key="ellipsis-start">
+          <PaginationEllipsis />
+        </PaginationItem>,
+      );
+    }
+
+    // Add page numbers (current, one before, one after)
+    for (let page = startPage; page <= endPage; page++) {
+      items.push(
+        <PaginationItem key={page}>
+          <PaginationLink
+            isActive={page === currentPage}
+            onClick={() => handlePageChange(page)}
+            className="cursor-pointer" // Explicitly set cursor to pointer
+          >
+            {page}
+          </PaginationLink>
+        </PaginationItem>,
+      );
+    }
+
+    // Add ellipsis after if there are pages after endPage
+    if (endPage < totalPages) {
+      items.push(
+        <PaginationItem key="ellipsis-end">
+          <PaginationEllipsis />
+        </PaginationItem>,
+      );
+    }
+
+    // Add "Next" button
+    items.push(
+      <PaginationItem key="next">
+        <PaginationNext
+          onClick={() => handlePageChange(currentPage + 1)}
+          className={
+            (currentPage === totalPages ? "disabled-class" : "") +
+            "cursor-pointer"
+          }
+        />
+      </PaginationItem>,
+    );
+
+    return items;
+  };
+
   return (
     <div className="rounded-lg border shadow-sm bg-true-black">
-      <h2 className="text-xl font-semibold p-4">Market Assets</h2>
+      <div className="p-4 flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Market Assets</h2>
+        {totalPages > 1 && (
+          <Pagination className="ml-auto">
+            <PaginationContent>{renderPaginationItems()}</PaginationContent>
+          </Pagination>
+        )}
+      </div>
       {loading && <div className="text-center py-4">Loading assets...</div>}
       {!loading && assets.length === 0 && (
         <div className="text-center py-4">No assets found.</div>
@@ -68,11 +150,13 @@ export default function MainMarketArea({
                   <TableCell>{asset.symbol}</TableCell>
                   <TableCell>{asset.name}</TableCell>
                   <TableCell>${asset.price.toFixed(2)}</TableCell>
-                  <TableCell>{asset.change}</TableCell>
+                  <TableCell>{asset.change.toFixed(2)}%</TableCell>
                   <TableCell>
                     <WatchlistButton
                       symbol={asset.symbol}
-                      watchlist={watchlist.map((item) => item.symbol)} // Map to symbols for comparison
+                      watchlist={
+                        watchlist ? watchlist.map((item) => item.symbol) : []
+                      }
                       onToggleWatchlist={() =>
                         onToggleWatchlist(
                           asset._id.toString(),
@@ -87,29 +171,6 @@ export default function MainMarketArea({
               ))}
             </TableBody>
           </Table>
-        </div>
-      )}
-      {!loading && totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
         </div>
       )}
     </div>
