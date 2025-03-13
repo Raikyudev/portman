@@ -140,8 +140,6 @@ export async function GET(request: Request) {
       });
     }
 
-    console.log("Assets before enrichment:", assets); // Log full objects
-
     let enrichedAssets: IExtendedAsset[];
     if (market) {
       enrichedAssets = await Promise.all(
@@ -177,8 +175,6 @@ export async function GET(request: Request) {
           }) as IExtendedAsset,
       );
     }
-
-    console.log("Enriched assets:", enrichedAssets); // Log full enriched data
 
     return NextResponse.json({
       assets: enrichedAssets,

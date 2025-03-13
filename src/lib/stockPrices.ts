@@ -1,6 +1,7 @@
 // src/lib/stockPrices.ts
 import yahooFinance from "yahoo-finance2";
 import { getDateRange } from "./utils";
+import { getAllCurrencyRates } from "@/lib/currencyExchange";
 
 interface PriceEntry {
   date: string;
@@ -278,5 +279,80 @@ export async function getFullPriceHistory(
   } catch (error) {
     console.error("Error fetching full price history:", error);
     return [];
+  }
+}
+
+interface AssetDetailsData {
+  marketCap: number;
+  volume24h: number;
+  fiftyTwoWeekHigh: number;
+  fiftyTwoWeekLow: number;
+  trailingPE: number;
+  trailingAnnualDividendYield: number;
+}
+
+export async function getAssetDetailsData(
+  symbol: string,
+): Promise<AssetDetailsData> {
+  try {
+    // Fetch the quote data for the given symbol
+    const quote = await yahooFinance.quote(symbol);
+    if (!quote) {
+      console.error(`No quote data found for symbol: ${symbol}`);
+    }
+
+    // Fetch all currency rates from the database
+    const currencyRates = await getAllCurrencyRates();
+    console.log(`Loaded ${currencyRates.size} currency rates.`);
+
+    // Determine the currency directly from the quote
+    const stockCurrency = quote.currency || "USD"; // Fallback to USD if currency is missing
+    console.log(`Detected currency for ${symbol}: ${stockCurrency}`);
+
+    // Extract the required fields with initial values
+    let marketCap = quote.marketCap || 0;
+    let volume24h = quote.regularMarketVolume || 0;
+    const fiftyTwoWeekHigh = quote.fiftyTwoWeekHigh || 0;
+    const fiftyTwoWeekLow = quote.fiftyTwoWeekLow || 0;
+    const trailingPE = quote.trailingPE || 0;
+    const trailingAnnualDividendYield = quote.trailingAnnualDividendYield || 0;
+
+    // Convert marketCap and volume24h to USD if not already in USD
+    if (stockCurrency !== "USD") {
+      const rate = currencyRates.get(stockCurrency.toUpperCase());
+      if (rate === undefined) {
+        console.warn(
+          `No exchange rate found for ${stockCurrency} for ${symbol}, using original values`,
+        );
+      } else {
+        // Convert by dividing by the rate (rate is foreign currency per USD)
+        marketCap = marketCap / rate;
+        volume24h = volume24h / rate;
+      }
+    }
+
+    // Ensure non-negative values
+    const details: AssetDetailsData = {
+      marketCap: Math.max(marketCap, 0),
+      volume24h: Math.max(volume24h, 0),
+      fiftyTwoWeekHigh: Math.max(fiftyTwoWeekHigh, 0),
+      fiftyTwoWeekLow: Math.max(fiftyTwoWeekLow, 0),
+      trailingPE: Math.max(trailingPE, 0),
+      trailingAnnualDividendYield: Math.max(trailingAnnualDividendYield, 0),
+    };
+
+    console.log(`Fetched and converted asset details for ${symbol}:`, details);
+    return details;
+  } catch (error) {
+    console.error(`Error fetching asset details for ${symbol}:`, error);
+    // Return default values in case of error
+    return {
+      marketCap: 0,
+      volume24h: 0,
+      fiftyTwoWeekHigh: 0,
+      fiftyTwoWeekLow: 0,
+      trailingPE: 0,
+      trailingAnnualDividendYield: 0,
+    };
   }
 }

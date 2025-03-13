@@ -24,16 +24,20 @@ export default function WatchlistButton({
   const isInWatchlist = watchlist.includes(symbol);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleToggle = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await onToggleWatchlist();
-    } catch (error) {
-      console.error("Error toggling watchlist:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [onToggleWatchlist]);
+  const handleToggle = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation(); // Prevent the click event from bubbling up to the TableRow
+      setIsLoading(true);
+      try {
+        await onToggleWatchlist();
+      } catch (error) {
+        console.error("Error toggling watchlist:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [onToggleWatchlist],
+  );
 
   return (
     <TooltipProvider>

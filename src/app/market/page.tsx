@@ -36,6 +36,7 @@ export default function MarketPage() {
   >([]); // Initialize as empty array
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const watchlistRef = useRef<{ refetch: () => Promise<void> }>(null); // Ref to access Watchlist's refetch method
 
   const fetchAssets = useCallback(async () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -135,34 +136,25 @@ export default function MarketPage() {
             credentials: "include",
             body: JSON.stringify({ asset_id: assetId }),
           });
-          if (!response.ok) console.error("Failed to add to watchlist");
-          const data = await response.json();
-          if (data.message) {
-            // Fetch updated watchlist to sync state
-            const watchlistResponse = await fetch("/api/watchlist", {
-              credentials: "include",
-            });
-            const watchlistData = await watchlistResponse.json();
-            // Ensure watchlistData is an array
-            setWatchlist(Array.isArray(watchlistData) ? watchlistData : []);
+          if (!response.ok) {
+            console.error("Failed to add to watchlist");
           }
         } else {
           const response = await fetch(`/api/watchlist?id=${assetId}`, {
             method: "DELETE",
             credentials: "include",
           });
-          if (!response.ok) console.error("Failed to remove from watchlist");
-          const watchlistResponse = await fetch("/api/watchlist", {
-            credentials: "include",
-          });
-          const watchlistData = await watchlistResponse.json();
-          // Ensure watchlistData is an array
-          setWatchlist(Array.isArray(watchlistData) ? watchlistData : []);
+          if (!response.ok) {
+            console.error("Failed to remove from watchlist");
+          }
+        }
+        // Trigger refetch in Watchlist component
+        if (watchlistRef.current) {
+          await watchlistRef.current.refetch();
         }
       } catch (error) {
         console.error("Error toggling watchlist:", error);
-        // Ensure watchlist remains an array even on error
-        setWatchlist([]);
+        throw error; // Propagate error to WatchlistButton
       }
     },
     [],
@@ -177,7 +169,11 @@ export default function MarketPage() {
           <h1 className="text-2xl font-bold">Market</h1>
           <div className="flex-1 flex justify-center">
             <div className="w-1/3">
-              <SearchBar query={query} setQuery={setQuery} onSearch={handleSearch} />
+              <SearchBar
+                query={query}
+                setQuery={setQuery}
+                onSearch={handleSearch}
+              />
             </div>
           </div>
         </div>
@@ -213,7 +209,7 @@ export default function MarketPage() {
           </div>
 
           <div className="col-span-1">
-            <Watchlist setWatchlist={setWatchlist} />
+            <Watchlist ref={watchlistRef} setWatchlist={setWatchlist} />
           </div>
 
           <div className="col-span-1">

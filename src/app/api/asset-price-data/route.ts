@@ -7,7 +7,9 @@ import { authOptions } from "@/lib/auth";
 import { getFullPriceHistory } from "@/lib/stockPrices"; // Updated import
 import { getTodayDate } from "@/lib/utils";
 import { Types } from "mongoose";
+import yahooFinance from "yahoo-finance2";
 
+yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
 interface PriceData {
   date: string;
   price: number;
@@ -90,18 +92,14 @@ export async function GET(request: Request) {
         .split("T")[0];
     }
 
-    console.log(
-      `Fetching prices for symbol: ${asset.symbol} from ${startDate} to ${endDate}`,
-    );
-
     // Use the new getFullPriceHistory function
-    const priceHistory = await getFullPriceHistory(
+    let priceHistory = await getFullPriceHistory(
       asset.symbol,
       startDate,
       endDate,
     );
-    console.log(`Price history for ${asset.symbol}:`, priceHistory);
 
+    priceHistory = priceHistory.filter((entry: PriceData) => entry.price !== 0);
     const responseData: AssetPriceResponse = {
       name: asset.name,
       symbol: asset.symbol,

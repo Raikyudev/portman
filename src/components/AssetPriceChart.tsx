@@ -20,12 +20,16 @@ interface AssetPriceResponse {
 
 interface AssetPriceChartProps {
   assetId: string;
-  onClose: () => void;
+  onClose?: () => void; // Make onClose optional
+  hideCross?: boolean; // Optional prop to hide the cross button
+  onSymbolFetched?: (symbol: string) => void; // Optional callback to pass the symbol
 }
 
 export default function AssetPriceChart({
   assetId,
   onClose,
+  hideCross = false, // Default to false if not provided
+  onSymbolFetched, // Optional callback
 }: AssetPriceChartProps) {
   const [priceData, setPriceData] = useState<PriceData[]>([]);
   const [latestPrice, setLatestPrice] = useState(0);
@@ -53,6 +57,11 @@ export default function AssetPriceChart({
         setCompanyName(data.name || "Unknown");
         setSymbol(data.symbol || "N/A");
         setPriceData(data.priceHistory || []);
+
+        // Pass the symbol back to the parent (AssetDetails) if callback is provided
+        if (onSymbolFetched && data.symbol) {
+          onSymbolFetched(data.symbol);
+        }
 
         if (data.priceHistory && data.priceHistory.length > 0) {
           const latestValue =
@@ -112,7 +121,7 @@ export default function AssetPriceChart({
     };
 
     fetchPriceData();
-  }, [assetId, selectedRange]);
+  }, [assetId, selectedRange, onSymbolFetched]); // Added onSymbolFetched to dependency array
 
   const chartData = priceData.map((entry) => ({
     date: new Date(entry.date).toLocaleDateString(),
@@ -156,16 +165,23 @@ export default function AssetPriceChart({
       <div className="p-4">
         <div className="text-white flex justify-between items-center">
           <div>
-            <span className="text-xl font-semibold">{companyName}</span>
-            <span className="text-sm ml-2">{symbol}</span>
+            <span className="text-2xl font-bold">{companyName}</span>
+            <span className="text-xs ml-2 text-gray">{symbol}</span>
           </div>
-          <button
-            onClick={onClose}
-            className="focus:outline-none"
-            aria-label="Close chart"
-          >
-            <Image src="/white-cross.svg" alt="Close" width={24} height={24} />
-          </button>
+          {!hideCross && onClose && (
+            <button
+              onClick={onClose}
+              className="focus:outline-none"
+              aria-label="Close chart"
+            >
+              <Image
+                src="/white-cross.svg"
+                alt="Close"
+                width={24}
+                height={24}
+              />
+            </button>
+          )}
         </div>
       </div>
       <div className="px-4 pb-8">

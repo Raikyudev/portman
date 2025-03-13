@@ -97,34 +97,14 @@ export async function broadMarketFetch({
     let assets: IAsset[] = (await Asset.find({}).exec()).map((doc) =>
       doc.toObject(),
     );
-    console.log("Raw assets from DB (first 10):", assets.slice(0, 10)); // Log first 10 for brevity
 
     // Filter out assets missing required fields
     assets = assets.filter((asset) => {
-      if (!asset.symbol || !asset.name) {
-        console.warn(`Asset missing symbol or name:`, asset);
-        return false;
-      }
-      return true;
+      return asset.symbol || asset.name;
     });
 
     // Apply client-side sorting based on user's currency
     assets = sortAssets(assets, userCurrency);
-    console.log("Sorted assets (first 10):", assets.slice(0, 10)); // Log first 10 after sorting
-    console.log(
-      "Full sorted assets order (first 100 symbols):",
-      assets.slice(0, 100).map((a) => a.symbol),
-    ); // Log symbols to verify order
-    console.log(
-      "Sorted assets by market and type (first 10):",
-      assets
-        .slice(0, 10)
-        .map((a) => ({
-          symbol: a.symbol,
-          market: a.market,
-          asset_type: a.asset_type,
-        })),
-    ); // Debug market and type
 
     // Apply pagination
     const total = assets.length;
