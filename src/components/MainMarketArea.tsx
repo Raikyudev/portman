@@ -22,6 +22,7 @@ import {
 import WhiteFilledStar from "../../public/white-filled-star.svg";
 import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
 
 interface MainMarketAreaProps {
   assets: IExtendedAsset[];
@@ -122,71 +123,83 @@ export default function MainMarketArea({
   };
 
   return (
-    <div className="rounded-lg border shadow-sm bg-true-black">
-      <div className="flex justify-end gap-4 p-4">
-        <div className="bg-black p-4 text-gray text-sm rounded-lg font-semibold">Choose an asset to see more details</div>
-        <div className="flex gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold"><Image
-            src={WhiteFilledStar}
-            alt="White star icon"
-            width={18}
-            height={18}
-            className="w-5 h-5"
-        />  to add to the watchlist</div>
-      </div>
-      <div>
-        {totalPages > 1 && (
-          <Pagination className="ml-auto">
-            <PaginationContent>{renderPaginationItems()}</PaginationContent>
-          </Pagination>
+    <Card>
+      <div className="rounded-lg border shadow-sm bg-true-black">
+        <div className={"flex justify-between items-center p-4"}>
+          <div className="flex justify-end gap-4 p-4">
+            <div className="bg-black p-4 text-gray text-sm rounded-lg font-semibold">
+              Choose an asset to see more details
+            </div>
+            <div className="flex gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
+              <Image
+                src={WhiteFilledStar}
+                alt="White star icon"
+                width={18}
+                height={18}
+                className="w-5 h-5"
+              />{" "}
+              to add to the watchlist
+            </div>
+          </div>
+          <div>
+            {totalPages > 1 && (
+              <Pagination className="ml-auto">
+                <PaginationContent>{renderPaginationItems()}</PaginationContent>
+              </Pagination>
+            )}
+          </div>
+        </div>
+        {loading && <div className="text-center py-4">Loading assets...</div>}
+        {!loading && assets.length === 0 && (
+          <div className="text-center py-4">No assets found.</div>
+        )}
+        {!loading && assets.length > 0 && (
+          <ScrollArea className="h-[calc(80vh-200px)] w-full">
+            <div className="overflow-x-auto p-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Change</TableHead>
+                    <TableHead>Watchlist</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assets.map((asset) => (
+                    <TableRow key={asset._id.toString()}>
+                      <TableCell>{asset.symbol}</TableCell>
+                      <TableCell>{asset.name}</TableCell>
+                      <TableCell>${asset.price.toFixed(2)}</TableCell>
+                      <TableCell>{asset.change.toFixed(2)}%</TableCell>
+                      <TableCell>
+                        <WatchlistButton
+                          symbol={asset.symbol}
+                          watchlist={
+                            watchlist
+                              ? watchlist.map((item) => item.symbol)
+                              : []
+                          }
+                          onToggleWatchlist={() =>
+                            onToggleWatchlist(
+                              asset._id.toString(),
+                              !watchlist.some(
+                                (item) =>
+                                  item.asset_id === asset._id.toString(),
+                              ),
+                            )
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
         )}
       </div>
-      {loading && <div className="text-center py-4">Loading assets...</div>}
-      {!loading && assets.length === 0 && (
-        <div className="text-center py-4">No assets found.</div>
-      )}
-      {!loading && assets.length > 0 && (
-          <ScrollArea className="h-[calc(87vh-200px)] w-full">
-        <div className="overflow-x-auto p-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Change</TableHead>
-                <TableHead>Watchlist</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assets.map((asset) => (
-                <TableRow key={asset._id.toString()}>
-                  <TableCell>{asset.symbol}</TableCell>
-                  <TableCell>{asset.name}</TableCell>
-                  <TableCell>${asset.price.toFixed(2)}</TableCell>
-                  <TableCell>{asset.change.toFixed(2)}%</TableCell>
-                  <TableCell>
-                    <WatchlistButton
-                      symbol={asset.symbol}
-                      watchlist={
-                        watchlist ? watchlist.map((item) => item.symbol) : []
-                      }
-                      onToggleWatchlist={() =>
-                        onToggleWatchlist(
-                          asset._id.toString(),
-                          !watchlist.some(
-                            (item) => item.asset_id === asset._id.toString(),
-                          ),
-                        )
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-            </ScrollArea>
-      )}
-    </div>
+    </Card>
   );
 }

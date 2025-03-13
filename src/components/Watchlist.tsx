@@ -77,7 +77,7 @@ export default function Watchlist({ setWatchlist }: WatchlistProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className={"bg-true-black"}>
         <CardHeader>
           <CardTitle>Your Watchlist</CardTitle>
         </CardHeader>
@@ -96,36 +96,36 @@ export default function Watchlist({ setWatchlist }: WatchlistProps) {
       <CardContent className="h-auto">
         {error && <div className="text-red mb-4">{error}</div>}
         <ScrollArea className="h-[calc(30vh-10px)] w-full">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Symbol</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Change</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {watchlistLocal.length > 0 ? (
-              watchlistLocal.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.symbol}</TableCell>
-                  <TableCell>${item.price.toLocaleString()}</TableCell>
-                  <TableCell>
-                    {parseFloat(item.change) >= 0
-                      ? "+" + item.change
-                      : item.change}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Symbol</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Change</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {watchlistLocal.length > 0 ? (
+                watchlistLocal.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.symbol}</TableCell>
+                    <TableCell>${item.price.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {parseFloat(item.change) >= 0
+                        ? "+" + item.change
+                        : item.change}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    {error ? error : "No items in watchlist"}
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3}>
-                  {error ? error : "No items in watchlist"}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
         </ScrollArea>
       </CardContent>
     </Card>

@@ -25,10 +25,10 @@ export default function TopGainers({ topGainers }: TopGainersProps) {
   return (
     <Card className="bg-true-black">
       <CardHeader>
-          <CardTitle>Top Gainers Today</CardTitle>
+        <CardTitle>Top Gainers Today</CardTitle>
       </CardHeader>
       <CardContent className="h-auto">
-        <ScrollArea className="h-[calc(30vh-10px)] w-full">
+        <ScrollArea className="h-[30vh] w-full">
           <Table>
             <TableHeader>
               <TableRow>
