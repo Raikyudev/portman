@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+
 interface GenerateButtonProps {
   loading: boolean;
   setLoading: (value: boolean) => void;
@@ -67,8 +69,12 @@ export default function GenerateButton({
   };
 
   return (
-    <button onClick={handleGenerateReport} disabled={loading}>
-      {loading ? "Generating..." : "Download Report"}
-    </button>
+    <Button
+      onClick={handleGenerateReport}
+      disabled={loading}
+      className="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg"
+    >
+      {loading ? "Generating..." : "Generate a Report"}
+    </Button>
   );
 }

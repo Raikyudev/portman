@@ -125,11 +125,11 @@ export default function Navbar() {
                     </Link>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link href="#" legacyBehavior passHref>
+                    <Link href="/reports" legacyBehavior passHref>
                       <NavigationMenuLink
                         className={navigationMenuTriggerStyle()}
                       >
-                        Profile
+                        Reports
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>

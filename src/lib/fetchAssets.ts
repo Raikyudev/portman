@@ -98,9 +98,7 @@ export default async function fetchAssets() {
 
     if (bulkOps.length > 0) {
       const result = await Asset.bulkWrite(bulkOps);
-      console.log(
-        `Upserted: ${result.upsertedCount}, Modified: ${result.modifiedCount}`,
-      );
+      console.log("result: ", result);
     } else {
       console.log("No assets to update.");
     }
