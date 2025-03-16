@@ -66,7 +66,7 @@ export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
   }, [status, session, portfolioId]);
 
   return (
-    <Card>
+    <Card className="bg-true-black">
       <CardHeader>
         <CardTitle>Top Holdings</CardTitle>
       </CardHeader>

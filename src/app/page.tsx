@@ -137,11 +137,12 @@ export default function Home() {
             </CardHeader>
             <CardContent className="h-auto">
               Log in or create a new account
-              <Image
-                src="/homepage1.png"
-                alt="Description of image"
-                width={600}
-                height={400}
+              <p><br /></p>
+              <Image className="mt-2"
+                  src="/homepage1.png"
+                  alt="Description of image"
+                  width={600}
+                  height={400}
               />
             </CardContent>
           </Card>
@@ -152,12 +153,11 @@ export default function Home() {
             </CardHeader>
             <CardContent className="h-auto">
               Create your first portfolio and add your transactions
-              <Image
-                src="/homepage1.png"
-                alt="Description of image"
-                className=""
-                width={600}
-                height={400}
+              <Image className="mt-2"
+                  src="/homepage1.png"
+                  alt="Description of image"
+                  width={600}
+                  height={400}
               />
             </CardContent>
           </Card>
@@ -168,11 +168,11 @@ export default function Home() {
             </CardHeader>
             <CardContent className="h-auto">
               Explore your insights and see how your portfolio is performing
-              <Image
-                src="/homepage1.png"
-                alt="Description of image"
-                width={600}
-                height={400}
+              <Image className="mt-2"
+                  src="/homepage1.png"
+                  alt="Description of image"
+                  width={600}
+                  height={400}
               />
             </CardContent>
           </Card>

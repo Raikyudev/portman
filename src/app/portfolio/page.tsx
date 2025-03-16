@@ -179,6 +179,7 @@ export default function Page() {
                 initialPortfolioId={expandedPortfolio ?? undefined}
                 portfolioValue={portfolioValue}
                 profit={profit}
+
               />
               {expandedPortfolio ? (
                 <AddTransactionButton
