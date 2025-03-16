@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0]; // Returns "2025-03-01" as of current date
+  return new Date().toISOString().split("T")[0];
 }
 
 export function getDateRange(startDate: string, endDate: string): string[] {

@@ -2,13 +2,14 @@ import mongoose, { Document, Schema } from "mongoose";
 import { REPORT_FORMATS, ReportFormat } from "@/lib/constants";
 
 interface IGenerationInputs {
-  from_date: Date;
+  from_date?: Date; // Make from_date optional in the interface
   to_date: Date;
 }
+
 export interface IReport extends Document {
   _id: Schema.Types.ObjectId;
   user_id: Schema.Types.ObjectId;
-  portfolio_id: Schema.Types.ObjectId;
+  portfolio_ids: Schema.Types.ObjectId[];
   name: string;
   report_type: string;
   report_format: ReportFormat;
@@ -22,10 +23,14 @@ const reportSchema: Schema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  portfolio_id: {
-    type: Schema.Types.ObjectId,
+  portfolio_ids: {
+    type: [Schema.Types.ObjectId],
     ref: "Portfolio",
     required: true,
+    validate: {
+      validator: (v: Schema.Types.ObjectId[]) => v.length > 0,
+      message: "At least one portfolio ID is required",
+    },
   },
   name: {
     type: String,
@@ -41,17 +46,14 @@ const reportSchema: Schema = new mongoose.Schema({
     required: true,
   },
   generation_inputs: {
-    type: {
-      from_date: {
-        type: Date,
-        required: true,
-      },
-      to_date: {
-        type: Date,
-        required: true,
-      },
+    from_date: {
+      type: Date,
+      required: false,
     },
-    required: true,
+    to_date: {
+      type: Date,
+      required: true,
+    },
   },
   generated_at: {
     type: Date,
