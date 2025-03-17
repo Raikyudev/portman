@@ -171,18 +171,53 @@ export async function POST(request: Request) {
       stockValuesTo,
     );
 
+    // Transform holdings to include quantity and value
+    const stockHoldingsFromWithValues: Record<
+      string,
+      { quantity: number; value: number }
+    > = {};
+    const stockHoldingsToWithValues: Record<
+      string,
+      { quantity: number; value: number }
+    > = {};
+
+    // Populate stockHoldingsFromWithValues
+    if (formattedFromDate) {
+      for (const symbol in aggregatedHoldingsFrom) {
+        const quantity = aggregatedHoldingsFrom[symbol];
+        const price = stockValuesFrom[symbol] || 0;
+        const value = quantity * price;
+        stockHoldingsFromWithValues[symbol] = { quantity, value };
+        if (price === 0) {
+          console.warn(
+            `No valid price found for ${symbol} on ${formattedFromDate}, value set to 0`,
+          );
+        }
+      }
+    }
+
+    // Populate stockHoldingsToWithValues
+    for (const symbol in aggregatedHoldingsTo) {
+      const quantity = aggregatedHoldingsTo[symbol];
+      const price = stockValuesTo[symbol] || 0;
+      const value = quantity * price;
+      stockHoldingsToWithValues[symbol] = { quantity, value };
+      if (price === 0) {
+        console.warn(
+          `No valid price found for ${symbol} on ${formattedToDate}, value set to 0`,
+        );
+      }
+    }
+
     const generationInputs = {
       fromDate: formattedFromDate,
       toDate: formattedToDate,
-      transactions: allTransactions,
-      stockHoldingsFrom: aggregatedHoldingsFrom,
-      stockHoldingsTo: aggregatedHoldingsTo,
-      stockValuesFrom,
-      stockValuesTo,
       portfolioValueFrom,
       portfolioValueTo,
+      stockHoldingsFrom: stockHoldingsFromWithValues,
+      stockHoldingsTo: stockHoldingsToWithValues,
+      reportType: reportType,
     };
-
     if (!generationInputs || Object.keys(generationInputs).length === 0) {
       console.error("Validation failed: Invalid data for report generation");
       return NextResponse.json(

@@ -249,6 +249,12 @@ export default function Page() {
     }
   };
 
+  useEffect(() => {
+    if (requiresPortfolio && portfolios.length > 0) {
+      form.setValue("selectedPortfolio", portfolios[0]._id.toString());
+    }
+  }, [requiresPortfolio, portfolios, form]);
+
   return (
     <ProtectedLayout>
       <div className="p-6 bg-true-black rounded-xl">
@@ -407,8 +413,8 @@ export default function Page() {
                                       ) => {
                                         field.onChange(range);
                                       }}
+                                      disabled={{ after: new Date() }}
                                       numberOfMonths={2}
-                                      toDate={new Date()}
                                       modifiers={{ today: new Date() }}
                                       modifiersClassNames={{
                                         today: "border-2 border-red rounded",
