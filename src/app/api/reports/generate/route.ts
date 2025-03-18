@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-
 import { generatePDF } from "@/lib/reportUtils";
 import Report from "@/models/Report";
 import { dbConnect } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { getTransactions } from "@/lib/transactions";
+import { getPortfolios } from "@/lib/portfolioDetails";
 import { authOptions } from "@/lib/auth";
 import {
   calculatePortfolioValue,
   calculateStockHoldings,
 } from "@/lib/portfolioCalculations";
 import { getStocksPriceForDay } from "@/lib/stockPrices";
-import { ITransaction } from "@/models/Transaction";
+import { PortfolioData, PortfolioHoldings } from "@/types/portfolio"; // Import PortfolioData
 
 export async function POST(request: Request) {
   try {
@@ -49,6 +49,16 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      !["income_report", "portfolio_report", "summary"].includes(reportType)
+    ) {
+      console.error("Validation failed: Invalid report type");
+      return NextResponse.json(
+        { error: "Invalid report type" },
+        { status: 400 },
+      );
+    }
+
     const fromDateObj: Date | undefined = dateRange.from
       ? new Date(dateRange.from)
       : undefined;
@@ -74,9 +84,11 @@ export async function POST(request: Request) {
     }
 
     const formattedFromDate = fromDateObj
-      ? fromDateObj.toISOString()
+      ? fromDateObj.toISOString().split("T")[0]
       : undefined;
-    const formattedToDate = toDateObj.toISOString();
+    const formattedToDate = toDateObj.toISOString().split("T")[0];
+    console.log("Formatted From Date:", formattedFromDate);
+    console.log("Formatted To Date:", formattedToDate);
 
     console.log("Connecting to database...");
     await dbConnect();
@@ -103,121 +115,112 @@ export async function POST(request: Request) {
       }
     });
 
-    console.log(`Processing portfolios: ${portfolioIds}`);
-    let allTransactions: ITransaction[] = [];
-    const aggregatedHoldingsFrom: Record<string, number> = {};
-    const aggregatedHoldingsTo: Record<string, number> = {};
+    // Fetch portfolio details (name and description)
+    console.log("Fetching portfolio details...");
+    const portfolioDetails = await getPortfolios(portfolioIds);
+    const portfolios = portfolioDetails.map((portfolio) => ({
+      _id: portfolio._id.toString(),
+      name: portfolio.name,
+      description: portfolio.description || "",
+    }));
+
+    // Initialize portfolio holdings object
+    const portfolioHoldings: Record<string, PortfolioHoldings> = {};
 
     for (const portfolioId of portfolioIds) {
-      console.log(`Fetching transactions for portfolio: ${portfolioId}`);
+      console.log(`Processing portfolio: ${portfolioId}`);
       const transactions = await getTransactions(portfolioId);
 
       if (!transactions || transactions.length === 0) {
         console.warn(`No transactions found for portfolio ID: ${portfolioId}`);
+        portfolioHoldings[portfolioId] = {
+          stockHoldingsFrom: {},
+          stockHoldingsTo: {},
+          portfolioValueFrom: 0,
+          portfolioValueTo: 0,
+        };
         continue;
       }
 
-      allTransactions = allTransactions.concat(transactions);
+      // Calculate holdings for fromDate if provided
+      const stockHoldingsFrom = formattedFromDate
+        ? await calculateStockHoldings(transactions, formattedFromDate)
+        : {};
+      const stockPricesFrom = formattedFromDate
+        ? await getStocksPriceForDay(stockHoldingsFrom, formattedFromDate)
+        : {};
+      const portfolioValueFrom = formattedFromDate
+        ? calculatePortfolioValue(stockHoldingsFrom, stockPricesFrom)
+        : 0;
 
-      // Only calculate fromDate holdings if provided
-      if (formattedFromDate) {
-        console.log("Calculating stock holdings (from)...");
-        const stockHoldingsFrom = await calculateStockHoldings(
-          transactions,
-          formattedFromDate,
-        );
-
-        for (const symbol in stockHoldingsFrom) {
-          if (!aggregatedHoldingsFrom[symbol]) {
-            aggregatedHoldingsFrom[symbol] = 0;
-          }
-          aggregatedHoldingsFrom[symbol] += stockHoldingsFrom[symbol];
-        }
-      }
-
-      console.log("Calculating stock holdings (to)...");
+      // Calculate holdings for toDate
       const stockHoldingsTo = await calculateStockHoldings(
         transactions,
         formattedToDate,
       );
+      const stockPricesTo = await getStocksPriceForDay(
+        stockHoldingsTo,
+        formattedToDate,
+      );
+      const portfolioValueTo = calculatePortfolioValue(
+        stockHoldingsTo,
+        stockPricesTo,
+      );
+
+      // Transform holdings to include quantity and value
+      const stockHoldingsFromWithValues: Record<
+        string,
+        { quantity: number; value: number }
+      > = {};
+      const stockHoldingsToWithValues: Record<
+        string,
+        { quantity: number; value: number }
+      > = {};
+
+      if (formattedFromDate) {
+        for (const symbol in stockHoldingsFrom) {
+          const quantity = stockHoldingsFrom[symbol];
+          const price = stockPricesFrom[symbol] || 0;
+          const value = quantity * price;
+          stockHoldingsFromWithValues[symbol] = { quantity, value };
+          if (price === 0) {
+            console.warn(
+              `No valid price found for ${symbol} on ${formattedFromDate}, value set to 0`,
+            );
+          }
+        }
+      }
 
       for (const symbol in stockHoldingsTo) {
-        if (!aggregatedHoldingsTo[symbol]) {
-          aggregatedHoldingsTo[symbol] = 0;
-        }
-        aggregatedHoldingsTo[symbol] += stockHoldingsTo[symbol];
-      }
-    }
-
-    console.log("Fetching stock prices (from)...");
-    const stockValuesFrom = formattedFromDate
-      ? await getStocksPriceForDay(aggregatedHoldingsFrom, formattedFromDate)
-      : {};
-
-    console.log("Fetching stock prices (to)...");
-    const stockValuesTo = await getStocksPriceForDay(
-      aggregatedHoldingsTo,
-      formattedToDate,
-    );
-
-    console.log("Calculating portfolio value (from)...");
-    const portfolioValueFrom = formattedFromDate
-      ? calculatePortfolioValue(aggregatedHoldingsFrom, stockValuesFrom)
-      : 0;
-
-    console.log("Calculating portfolio value (to)...");
-    const portfolioValueTo = calculatePortfolioValue(
-      aggregatedHoldingsTo,
-      stockValuesTo,
-    );
-
-    // Transform holdings to include quantity and value
-    const stockHoldingsFromWithValues: Record<
-      string,
-      { quantity: number; value: number }
-    > = {};
-    const stockHoldingsToWithValues: Record<
-      string,
-      { quantity: number; value: number }
-    > = {};
-
-    // Populate stockHoldingsFromWithValues
-    if (formattedFromDate) {
-      for (const symbol in aggregatedHoldingsFrom) {
-        const quantity = aggregatedHoldingsFrom[symbol];
-        const price = stockValuesFrom[symbol] || 0;
+        const quantity = stockHoldingsTo[symbol];
+        const price = stockPricesTo[symbol] || 0;
         const value = quantity * price;
-        stockHoldingsFromWithValues[symbol] = { quantity, value };
+        stockHoldingsToWithValues[symbol] = { quantity, value };
         if (price === 0) {
           console.warn(
-            `No valid price found for ${symbol} on ${formattedFromDate}, value set to 0`,
+            `No valid price found for ${symbol} on ${formattedToDate}, value set to 0`,
           );
         }
       }
+
+      portfolioHoldings[portfolioId] = {
+        stockHoldingsFrom: stockHoldingsFromWithValues,
+        stockHoldingsTo: stockHoldingsToWithValues,
+        portfolioValueFrom,
+        portfolioValueTo,
+      };
     }
 
-    // Populate stockHoldingsToWithValues
-    for (const symbol in aggregatedHoldingsTo) {
-      const quantity = aggregatedHoldingsTo[symbol];
-      const price = stockValuesTo[symbol] || 0;
-      const value = quantity * price;
-      stockHoldingsToWithValues[symbol] = { quantity, value };
-      if (price === 0) {
-        console.warn(
-          `No valid price found for ${symbol} on ${formattedToDate}, value set to 0`,
-        );
-      }
-    }
+    console.log("Portfolio Holdings:", portfolioHoldings);
 
-    const generationInputs = {
+    const generationInputs: PortfolioData = {
       fromDate: formattedFromDate,
       toDate: formattedToDate,
-      portfolioValueFrom,
-      portfolioValueTo,
-      stockHoldingsFrom: stockHoldingsFromWithValues,
-      stockHoldingsTo: stockHoldingsToWithValues,
-      reportType: reportType,
+      reportType,
+      portfolios,
+      portfolioHoldings,
     };
+
     if (!generationInputs || Object.keys(generationInputs).length === 0) {
       console.error("Validation failed: Invalid data for report generation");
       return NextResponse.json(
@@ -227,10 +230,8 @@ export async function POST(request: Request) {
     }
 
     console.log("Generating report file...");
-    const fileName = `${name}`;
+    const fileName = `${name}.${format}`;
     let mimeType, fileBuffer;
-
-    // Use the provided name for the file name, appending format and date
 
     switch (format) {
       case "json":
@@ -252,7 +253,7 @@ export async function POST(request: Request) {
       user_id: session.user.id,
       portfolio_ids: portfolioObjectIds,
       report_type: reportType,
-      name: name, // Use the provided name directly
+      name: name,
       report_format: format,
       generation_inputs: {
         from_date: fromDateObj,
@@ -277,7 +278,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error generating report:", error);
     return NextResponse.json(
-      { error: `Error generating report: ` + error },
+      { error: `Error generating report: ${error}` },
       { status: 500 },
     );
   }

@@ -14,3 +14,24 @@ export interface IExtendedPortfolio extends IPortfolio {
 export interface IExtendedPortfolioHistory extends IPortfolioHistory {
   user_id: Schema.Types.ObjectId;
 }
+
+export interface PortfolioDetails {
+  _id: string;
+  name: string;
+  description: string;
+}
+
+export interface PortfolioHoldings {
+  stockHoldingsFrom: Record<string, { quantity: number; value: number }>;
+  stockHoldingsTo: Record<string, { quantity: number; value: number }>;
+  portfolioValueFrom: number;
+  portfolioValueTo: number;
+}
+
+export interface PortfolioData {
+  fromDate?: string;
+  toDate: string;
+  reportType: "income_report" | "portfolio_report" | "summary";
+  portfolios: PortfolioDetails[];
+  portfolioHoldings: Record<string, PortfolioHoldings>; // Map of portfolio _id to its holdings and values
+}
