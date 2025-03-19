@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { generatePDF } from "@/lib/reportUtils";
+import { createGenerationInputs } from "@/lib/createGenerationInputs"; // Import the new function
 import Report from "@/models/Report";
 import { dbConnect } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
-import { getTransactions } from "@/lib/transactions";
-import { getPortfolios } from "@/lib/portfolioDetails";
 import { authOptions } from "@/lib/auth";
-import {
-  calculatePortfolioValue,
-  calculateStockHoldings,
-} from "@/lib/portfolioCalculations";
-import { getStocksPriceForDay } from "@/lib/stockPrices";
-import { PortfolioData, PortfolioHoldings } from "@/types/portfolio"; // Import PortfolioData
 
 export async function POST(request: Request) {
   try {
@@ -59,10 +52,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const fromDateObj: Date | undefined = dateRange.from
-      ? new Date(dateRange.from)
-      : undefined;
     const toDateObj: Date = new Date(dateRange.to);
+    let fromDateObj: Date | undefined;
+
+    // For summary report, set fromDate to one year prior to toDate
+    if (reportType === "summary") {
+      fromDateObj = new Date(toDateObj);
+      fromDateObj.setFullYear(toDateObj.getFullYear() - 1);
+    } else {
+      fromDateObj = dateRange.from ? new Date(dateRange.from) : undefined;
+    }
 
     if (
       isNaN(toDateObj.getTime()) ||
@@ -82,13 +81,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const formattedFromDate = fromDateObj
-      ? fromDateObj.toISOString().split("T")[0]
-      : undefined;
-    const formattedToDate = toDateObj.toISOString().split("T")[0];
-    console.log("Formatted From Date:", formattedFromDate);
-    console.log("Formatted To Date:", formattedToDate);
 
     console.log("Connecting to database...");
     await dbConnect();
@@ -115,119 +107,13 @@ export async function POST(request: Request) {
       }
     });
 
-    // Fetch portfolio details (name and description)
-    console.log("Fetching portfolio details...");
-    const portfolioDetails = await getPortfolios(portfolioIds);
-    const portfolios = portfolioDetails.map((portfolio) => ({
-      _id: portfolio._id.toString(),
-      name: portfolio.name,
-      description: portfolio.description || "",
-    }));
-
-    // Initialize portfolio holdings object
-    const portfolioHoldings: Record<string, PortfolioHoldings> = {};
-
-    for (const portfolioId of portfolioIds) {
-      console.log(`Processing portfolio: ${portfolioId}`);
-      const transactions = await getTransactions(portfolioId);
-
-      if (!transactions || transactions.length === 0) {
-        console.warn(`No transactions found for portfolio ID: ${portfolioId}`);
-        portfolioHoldings[portfolioId] = {
-          stockHoldingsFrom: {},
-          stockHoldingsTo: {},
-          portfolioValueFrom: 0,
-          portfolioValueTo: 0,
-        };
-        continue;
-      }
-
-      // Calculate holdings for fromDate if provided
-      const stockHoldingsFrom = formattedFromDate
-        ? await calculateStockHoldings(transactions, formattedFromDate)
-        : {};
-      const stockPricesFrom = formattedFromDate
-        ? await getStocksPriceForDay(stockHoldingsFrom, formattedFromDate)
-        : {};
-      const portfolioValueFrom = formattedFromDate
-        ? calculatePortfolioValue(stockHoldingsFrom, stockPricesFrom)
-        : 0;
-
-      // Calculate holdings for toDate
-      const stockHoldingsTo = await calculateStockHoldings(
-        transactions,
-        formattedToDate,
-      );
-      const stockPricesTo = await getStocksPriceForDay(
-        stockHoldingsTo,
-        formattedToDate,
-      );
-      const portfolioValueTo = calculatePortfolioValue(
-        stockHoldingsTo,
-        stockPricesTo,
-      );
-
-      // Transform holdings to include quantity and value
-      const stockHoldingsFromWithValues: Record<
-        string,
-        { quantity: number; value: number }
-      > = {};
-      const stockHoldingsToWithValues: Record<
-        string,
-        { quantity: number; value: number }
-      > = {};
-
-      if (formattedFromDate) {
-        for (const symbol in stockHoldingsFrom) {
-          const quantity = stockHoldingsFrom[symbol];
-          const price = stockPricesFrom[symbol] || 0;
-          const value = quantity * price;
-          stockHoldingsFromWithValues[symbol] = { quantity, value };
-          if (price === 0) {
-            console.warn(
-              `No valid price found for ${symbol} on ${formattedFromDate}, value set to 0`,
-            );
-          }
-        }
-      }
-
-      for (const symbol in stockHoldingsTo) {
-        const quantity = stockHoldingsTo[symbol];
-        const price = stockPricesTo[symbol] || 0;
-        const value = quantity * price;
-        stockHoldingsToWithValues[symbol] = { quantity, value };
-        if (price === 0) {
-          console.warn(
-            `No valid price found for ${symbol} on ${formattedToDate}, value set to 0`,
-          );
-        }
-      }
-
-      portfolioHoldings[portfolioId] = {
-        stockHoldingsFrom: stockHoldingsFromWithValues,
-        stockHoldingsTo: stockHoldingsToWithValues,
-        portfolioValueFrom,
-        portfolioValueTo,
-      };
-    }
-
-    console.log("Portfolio Holdings:", portfolioHoldings);
-
-    const generationInputs: PortfolioData = {
-      fromDate: formattedFromDate,
-      toDate: formattedToDate,
-      reportType,
-      portfolios,
-      portfolioHoldings,
-    };
-
-    if (!generationInputs || Object.keys(generationInputs).length === 0) {
-      console.error("Validation failed: Invalid data for report generation");
-      return NextResponse.json(
-        { error: "Invalid data for report generation" },
-        { status: 400 },
-      );
-    }
+    // Generate the full generation inputs
+    const generationInputs = await createGenerationInputs({
+      portfolio_ids: portfolioIds,
+      report_type: reportType,
+      from_date: fromDateObj,
+      to_date: toDateObj,
+    });
 
     console.log("Generating report file...");
     const fileName = `${name}.${format}`;

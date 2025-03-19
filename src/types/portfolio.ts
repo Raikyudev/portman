@@ -26,6 +26,7 @@ export interface PortfolioHoldings {
   stockHoldingsTo: Record<string, { quantity: number; value: number }>;
   portfolioValueFrom: number;
   portfolioValueTo: number;
+  periodProfits: Record<string, number>;
 }
 
 export interface PortfolioData {

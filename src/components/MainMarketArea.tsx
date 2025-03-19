@@ -1,5 +1,3 @@
-"use client";
-
 import WatchlistButton from "./WatchlistButton";
 import { IExtendedAsset } from "@/types/asset";
 import {

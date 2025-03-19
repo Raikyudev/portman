@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 import { REPORT_FORMATS, ReportFormat } from "@/lib/constants";
 
 interface IGenerationInputs {
-  from_date?: Date; // Make from_date optional in the interface
+  from_date?: Date;
   to_date: Date;
 }
 

@@ -36,46 +36,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
-// Define the DatePicker component
-const DatePicker = ({
-  value,
-  onChange,
-}: {
-  value?: Date;
-  onChange: (date: Date | undefined) => void;
-}) => {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start text-left font-normal bg-background border-border text-foreground",
-            !value && "text-muted-foreground",
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? format(value, "dd/MM/yyyy") : <span>Pick a date</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0 bg-background border-border"
-        align="start"
-      >
-        <Calendar
-          mode="single"
-          selected={value}
-          onSelect={onChange}
-          initialFocus
-          toDate={new Date()} // Restrict future dates
-          modifiers={{ today: new Date() }}
-          modifiersClassNames={{ today: "border-2 border-red rounded" }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-};
-
 // Define the validation schema with Zod
 const formSchema = z
   .object({
@@ -111,8 +71,8 @@ const formSchema = z
   })
   .refine(
     (data) => {
-      // Require dateRange.to for all report types
-      return !!data.dateRange?.to;
+      // Require dateRange.to for all report types except summary (which sets it automatically)
+      return data.type === "summary" || !!data.dateRange?.to;
     },
     {
       message: "A date or date range end date is required",
@@ -146,6 +106,20 @@ export default function Page() {
     },
   });
 
+  const requiresPortfolio = form.watch("type") === "portfolio_report";
+  const isSummary = form.watch("type") === "summary";
+
+  // Automatically set dateRange for summary report
+  useEffect(() => {
+    if (isSummary) {
+      const today = new Date();
+      form.setValue("dateRange", {
+        from: undefined, // Will be set to one year prior in the API
+        to: today,
+      });
+    }
+  }, [isSummary, form]);
+
   useEffect(() => {
     const fetchPortfolios = async () => {
       setLoadingPortfolios(true);
@@ -168,12 +142,8 @@ export default function Page() {
     fetchPortfolios();
   }, []);
 
-  const requiresPortfolio = form.watch("type") === "portfolio_report";
-  const isSummary = form.watch("type") === "summary";
-
   const handleGenerateReport = async (values: z.infer<typeof formSchema>) => {
     try {
-      // Log the form values to debug
       console.log("Form values:", values);
 
       let selectedPortfolios: string[];
@@ -196,18 +166,16 @@ export default function Page() {
         );
       }
 
-      // Ensure the name is included in the payload
       if (!values.name) {
         console.error("Report name is required");
       }
 
-      // Prepare the payload for the report generation API
       const payload = {
         selectedPortfolios,
         type: values.type,
         format: values.format,
         dateRange: values.dateRange,
-        name: values.name, // Ensure the report name is included
+        name: values.name,
       };
 
       console.log("Sending payload to /api/reports/generate:", payload);
@@ -346,27 +314,15 @@ export default function Page() {
                         />
                       )}
 
-                      {/* Date Selection */}
-                      <FormField
-                        control={form.control}
-                        name="dateRange"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              {isSummary ? "Date" : "Date Range"}
-                            </FormLabel>
-                            <FormControl>
-                              {isSummary ? (
-                                <DatePicker
-                                  value={field.value?.to}
-                                  onChange={(date) =>
-                                    field.onChange({
-                                      from: undefined,
-                                      to: date,
-                                    })
-                                  }
-                                />
-                              ) : (
+                      {/* Date Selection (only for non-summary reports) */}
+                      {!isSummary && (
+                        <FormField
+                          control={form.control}
+                          name="dateRange"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date Range</FormLabel>
+                              <FormControl>
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <Button
@@ -422,12 +378,12 @@ export default function Page() {
                                     />
                                   </PopoverContent>
                                 </Popover>
-                              )}
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       {/* Format Selection */}
                       <FormField
