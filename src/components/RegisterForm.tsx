@@ -70,10 +70,10 @@ export default function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-4">
+    <div className="flex items-center justify-center bg-black p-24 border-2 border-white rounded-lg">
       <div className="w-full max-w-[450px] space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-red">
             Create an account
           </h1>
           <p className="text-sm text-gray-400">
@@ -179,7 +179,7 @@ export default function RegisterForm() {
 
           <Button
             type="submit"
-            className="w-full bg-white text-black hover:bg-gray-200 transition-colors"
+            className="w-full bg-red text-white hover:bg-white hover:text-true-black transition-colors"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -197,7 +197,7 @@ export default function RegisterForm() {
           <span className="text-gray-400">Already have an account? </span>
           <Link
             href="/auth/login"
-            className="text-white hover:underline underline-offset-4"
+            className="text-white hover:underline underline-offset-4 hover:text-red"
           >
             Sign in
           </Link>

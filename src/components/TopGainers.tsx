@@ -23,7 +23,7 @@ interface TopGainersProps {
 
 export default function TopGainers({ topGainers }: TopGainersProps) {
   return (
-    <Card className="bg-true-black">
+    <Card className="bg-true-black h-[40vh]">
       <CardHeader>
         <CardTitle>Top Gainers Today</CardTitle>
       </CardHeader>

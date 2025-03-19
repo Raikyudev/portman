@@ -105,13 +105,13 @@ const Watchlist = forwardRef<WatchlistRef, WatchlistProps>(
     }
 
     return (
-      <Card className="bg-true-black">
+      <Card className="bg-true-black h-[40vh]">
         <CardHeader>
           <CardTitle>Your Watchlist</CardTitle>
         </CardHeader>
         <CardContent className="h-auto">
           {error && <div className="text-red mb-4">{error}</div>}
-          <ScrollArea className="h-[calc(30vh-10px)] w-full">
+          <ScrollArea className="h-[30vh] w-full">
             <Table>
               <TableHeader>
                 <TableRow>

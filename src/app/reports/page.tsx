@@ -33,29 +33,32 @@ export default function Page() {
       <ProtectedLayout>
         <div className="flex flex-col container mx-auto gap-4 ">
 
-          <div className="flex justify-end mb-4 space-x-4 bg-true-black p-4 rounded-lg">
+          <div className="flex justify-between mb-4 space-x-4 bg-true-black p-4 rounded-lg">
             <h1 className="text-2xl font-bold">User&apos;s Reports</h1>
-            <div className="flex items-center space-x-2">
-              <label className="text-sm">From</label>
-              <Input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="bg-background border-border text-foreground"
-              />
+            <div className="flex gap-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm">From</label>
+                <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="bg-background border-border text-foreground"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm">To</label>
+                <Input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="bg-background border-border text-foreground"
+                />
+              </div>
+              <button className="bg-red rounded-md px-4 py-2 text-sm">
+                Sort
+              </button>
             </div>
-            <div className="flex items-center space-x-2">
-              <label className="text-sm">To</label>
-              <Input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="bg-background border-border text-foreground"
-              />
-            </div>
-            <button className="bg-red rounded-md px-4 py-2 text-sm">
-              Sort
-            </button>
+
           </div>
           <div className="p-4 bg-true-black rounded-xl">
             <ScrollArea className="h-[60vh] w-full rounded-lg">

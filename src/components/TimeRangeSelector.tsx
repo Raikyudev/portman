@@ -35,9 +35,9 @@ export default function TimeRangeSelector({
           key={range}
           variant={selectedRange === range ? "default" : "outline"}
           onClick={() => handleRangeChange(range)}
-          className={`text-white no-border ${
+          className={`text-white no-border hover:bg-white ${
             selectedRange === range ? "bg-red" : "bg-black"
-          } hover-none`}
+          } hover:text-true-black`}
         >
           {range}
         </Button>
