@@ -92,7 +92,7 @@ export default function RecentTransactions({
     <Card className="no-border bg-true-black">
       <CardHeader className="flex flex-row items-center justify-between pt-6 space-y-0 no-border">
         <CardTitle>Recent Transactions</CardTitle>
-        <Button onClick={openPopout} variant="outline" size="sm">
+        <Button onClick={openPopout} className="bg-red text-white hover:text-true-black" size="sm">
           View All Transactions
         </Button>
       </CardHeader>

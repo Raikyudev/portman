@@ -23,12 +23,12 @@ interface TopLosersProps {
 
 export default function TopLosers({ topLosers }: TopLosersProps) {
   return (
-    <Card className="bg-true-black">
+    <Card className="bg-true-black h-[40vh]">
       <CardHeader>
         <CardTitle>Top Losers Today</CardTitle>
       </CardHeader>
       <CardContent className="h-auto">
-        <ScrollArea className="h-[calc(30vh-10px)] w-full">
+        <ScrollArea className="h-[30vh] w-full">
         <Table>
           <TableHeader>
             <TableRow>

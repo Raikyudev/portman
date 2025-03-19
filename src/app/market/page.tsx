@@ -182,7 +182,7 @@ export default function MarketPage() {
           <div className="text-red-500">{marketDataError}</div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-[2vh]">
           <div className="col-span-1">
             <div className="bg-true-black text-white rounded-lg p-4 h-full">
               <h2 className="text-lg font-semibold mb-2">

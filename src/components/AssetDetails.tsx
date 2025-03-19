@@ -1,5 +1,4 @@
-// src/components/AssetDetails.tsx
-"use client";
+
 
 import AssetPriceChart from "./AssetPriceChart";
 import WatchlistButton from "./WatchlistButton"; // Import WatchlistButton

@@ -1,3 +1,4 @@
+
 import WatchlistButton from "./WatchlistButton";
 import { IExtendedAsset } from "@/types/asset";
 import {
@@ -133,7 +134,7 @@ export default function MainMarketArea({
   };
 
   return (
-    <Card className="h-[74vh] bg-true-black flex flex-col">
+    <Card className="h-[82vh] bg-true-black flex flex-col">
       {selectedAssetId ? (
         <AssetDetails
           assetId={selectedAssetId}

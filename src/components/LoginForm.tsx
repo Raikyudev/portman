@@ -65,10 +65,10 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="flex items-center justify-center bg-black p-4 h-full">
+    <div className="flex items-center justify-center bg-black p-24 border-2 border-white rounded-lg">
       <div className="w-full max-w-[400px] space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="text-2xl font-semibold tracking-tight text-red">
             Login to your account
           </h1>
           <p className="text-sm text-gray-400">
@@ -86,7 +86,7 @@ export default function LoginForm() {
               type="email"
               {...register("email")}
               placeholder="m@example.com"
-              className="bg-transparent border-gray-800 text-white placeholder:text-gray-600"
+              className="text-white placeholder:text-gray-600"
             />
             {errors.email && (
               <p className="text-xs text-red">{errors.email.message}</p>
@@ -100,7 +100,7 @@ export default function LoginForm() {
               </Label>
               <Link
                 href="/auth/forgot-password"
-                className="text-sm text-gray-400 hover:text-white transition-colors"
+                className="text-sm text-gray-400 hover:text-red transition-colors"
               >
                 Forgot your password?
               </Link>
@@ -133,7 +133,7 @@ export default function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full bg-white text-black hover:bg-gray-200 transition-colors"
+            className="w-full bg-red text-white hover:bg-white hover:text-true-black"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -142,7 +142,7 @@ export default function LoginForm() {
                 Logging in...
               </>
             ) : (
-              "Login"
+              "Log in"
             )}
           </Button>
         </form>
@@ -157,7 +157,7 @@ export default function LoginForm() {
           <span className="text-gray-400">Don&apos;t have an account? </span>
           <Link
             href="/auth/register"
-            className="text-white hover:underline underline-offset-4"
+            className="text-white hover:underline underline-offset-4 hover:text-red"
           >
             Sign up
           </Link>

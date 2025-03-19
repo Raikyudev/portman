@@ -1,5 +1,4 @@
 // src/components/PortfolioDropdown.tsx
-"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -59,7 +58,7 @@ export default function PortfolioDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="bg-red text-white p-2 flex justify-between space-x-2 rounded-lg min-w-[150px]">
+        <Button className="bg-red text-white hover:text-true-black p-2 flex justify-between space-x-2 rounded-lg min-w-[150px]">
           <span>{displayName}</span>
           <svg
             className="w-4 h-4"
@@ -77,7 +76,7 @@ export default function PortfolioDropdown({
           </svg>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64 bg-true-black border border-red rounded-xl shadow-lg mt-2 border-2">
+      <DropdownMenuContent className="w-64 bg-true-black border-red rounded-xl shadow-lg mt-2 border-2">
         <div className="p-2 border-b no-border">
           <span className="text-white font-semibold">All Portfolios</span>
         </div>
@@ -89,7 +88,7 @@ export default function PortfolioDropdown({
                 onClick={() => handleSelect(portfolio._id.toString())}
                 className={`${
                   selectedPortfolioId === portfolio._id.toString()
-                    ? "bg-true-black text-white border border-red border-2"
+                    ? "bg-true-black text-white border-red border-2"
                     : "bg-true-black text-white"
                 } hover:bg-red hover:text-white p-2 text-left`}
               >
@@ -122,7 +121,7 @@ export default function PortfolioDropdown({
               trigger={
                 <Button
                   variant="default"
-                  className="w-auto bg-red text-white mt-4 px-4 rounded-2xl"
+                  className="w-auto bg-red text-white hover:text-true-black mt-4 px-4 rounded-2xl"
                 >
                   Create new portfolio
                 </Button>
