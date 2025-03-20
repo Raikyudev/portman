@@ -6,6 +6,7 @@ import Report from "@/models/Report";
 import { dbConnect } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { reportTypes } from "@/lib/constants";
 
 export async function POST(request: Request) {
   try {
@@ -42,9 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      !["income_report", "portfolio_report", "summary"].includes(reportType)
-    ) {
+    if (!reportTypes.some((type) => type.value === reportType)) {
       console.error("Validation failed: Invalid report type");
       return NextResponse.json(
         { error: "Invalid report type" },

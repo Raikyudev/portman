@@ -22,3 +22,11 @@ export const marketPriorityMap: { [key: string]: string[] } = {
   HKD: ["Hong Kong"],
   CNY: ["Shanghai"],
 };
+
+export const reportTypes = [
+  { value: "income_report", label: "Income Report" },
+  { value: "portfolio_report", label: "Portfolio Report" },
+  { value: "summary", label: "Summary" },
+  { value: "ai_portfolio_summary", label: "AI Portfolio Summary" },
+  { value: "ai_account_summary", label: "AI Account Summary" },
+];

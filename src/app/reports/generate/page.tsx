@@ -35,8 +35,8 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import { reportTypes } from "@/lib/constants";
 
-// Define the validation schema with Zod
 const formSchema = z
   .object({
     name: z.string().min(1, "Report name is required"),
@@ -71,7 +71,6 @@ const formSchema = z
   })
   .refine(
     (data) => {
-      // Require dateRange.to for all report types except summary (which sets it automatically)
       return data.type === "summary" || !!data.dateRange?.to;
     },
     {
@@ -83,12 +82,6 @@ const formSchema = z
 export default function Page() {
   const [portfolios, setPortfolios] = useState<IExtendedPortfolio[]>([]);
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
-
-  const reportTypes = [
-    { value: "income_report", label: "Income Report" },
-    { value: "portfolio_report", label: "Portfolio Report" },
-    { value: "summary", label: "Summary" },
-  ];
 
   const formatOptions = [
     { value: "pdf", label: "PDF" },
@@ -106,15 +99,19 @@ export default function Page() {
     },
   });
 
-  const requiresPortfolio = form.watch("type") === "portfolio_report";
-  const isSummary = form.watch("type") === "summary";
+  const requiresPortfolio =
+    form.watch("type") === "portfolio_report" ||
+    form.watch("type") === "ai_portfolio_summary";
+  const isSummary =
+    form.watch("type") === "summary" ||
+    form.watch("type") === "ai_portfolio_summary" ||
+    form.watch("type") === "ai_account_summary";
 
-  // Automatically set dateRange for summary report
   useEffect(() => {
     if (isSummary) {
       const today = new Date();
       form.setValue("dateRange", {
-        from: undefined, // Will be set to one year prior in the API
+        from: undefined,
         to: today,
       });
     }
@@ -292,7 +289,6 @@ export default function Page() {
                         )}
                       />
 
-                      {/* Portfolio Selection */}
                       {requiresPortfolio && !loadingPortfolios && (
                         <FormField
                           control={form.control}
@@ -314,7 +310,6 @@ export default function Page() {
                         />
                       )}
 
-                      {/* Date Selection (only for non-summary reports) */}
                       {!isSummary && (
                         <FormField
                           control={form.control}
@@ -385,7 +380,6 @@ export default function Page() {
                         />
                       )}
 
-                      {/* Format Selection */}
                       <FormField
                         control={form.control}
                         name="format"
@@ -419,7 +413,6 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <Button
                     type="submit"
                     className="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg w-full"

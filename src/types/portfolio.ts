@@ -2,6 +2,7 @@ import { IPortfolioAsset } from "@/models/PortfolioAsset";
 import { IPortfolio } from "@/models/Portfolio";
 import { IPortfolioHistory } from "@/models/PortfolioHistory";
 import { Schema } from "mongoose";
+import { reportTypes } from "@/lib/constants";
 
 export interface IExtendedPortfolioAsset extends IPortfolioAsset {
   asset_info: { symbol: string; name: string };
@@ -29,10 +30,12 @@ export interface PortfolioHoldings {
   periodProfits: Record<string, number>;
 }
 
+export type ReportType = (typeof reportTypes)[number]["value"];
+
 export interface PortfolioData {
   fromDate?: string;
   toDate: string;
-  reportType: "income_report" | "portfolio_report" | "summary";
+  reportType: ReportType;
   portfolios: PortfolioDetails[];
-  portfolioHoldings: Record<string, PortfolioHoldings>; // Map of portfolio _id to its holdings and values
+  portfolioHoldings: Record<string, PortfolioHoldings>;
 }

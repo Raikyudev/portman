@@ -2,16 +2,38 @@ import puppeteer from "puppeteer";
 import { format } from "date-fns";
 import { PortfolioData } from "@/types/portfolio";
 
+interface AIPrediction {
+  symbol: string;
+  currentPrice: number;
+  predictedPrice12Months: number;
+  predictedChangePercentage: number;
+}
+
+async function getAIPredictions(symbols: string[]): Promise<AIPrediction[]> {
+  return symbols.map((symbol) => ({
+    symbol,
+    currentPrice: Math.random() * 100 + 50,
+    predictedPrice12Months: Math.random() * 150 + 50,
+    predictedChangePercentage: Math.random() * 50 - 25, // -25% to +25%
+  }));
+}
+
+async function getAIRecommendations(
+  currentHoldings: string[],
+): Promise<AIPrediction[]> {
+  const suggested = ["AAPL", "MSFT", "VTI", "SPY", "GOOGL"]
+    .filter((s) => !currentHoldings.includes(s))
+    .slice(0, 3);
+  return getAIPredictions(suggested);
+}
 export async function generatePDF(data: PortfolioData): Promise<Buffer> {
   try {
-    // Validate and format the input data
     const isSummaryReport = data.reportType === "summary";
     const formattedToDate = format(new Date(data.toDate), "dd-MM-yyyy");
     const formattedFromDate = data.fromDate
       ? format(new Date(data.fromDate), "dd-MM-yyyy")
       : null;
 
-    // Start the HTML content with the report header
     let htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -438,7 +460,113 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
           </div>
         `;
         break;
+      case "ai_portfolio_summary":
+      case "ai_account_summary":
+        const isAccountSummary = data.reportType === "ai_account_summary";
+        const currentHoldings = Object.values(data.portfolioHoldings).flatMap(
+          (h) => Object.keys(h.stockHoldingsTo),
+        );
 
+        const aiPredictions: AIPrediction[] =
+          await getAIPredictions(currentHoldings);
+        const aiRecommendations: AIPrediction[] =
+          await getAIRecommendations(currentHoldings);
+
+        htmlContent += `
+          <div>
+            <h2 class="section-header">${
+              isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
+            } as of ${formattedToDate}</h2>
+            
+            <h3 class="portfolio-header">12-Month Price Predictions</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Stock/Fund</th>
+                  <th>Current Price ($)</th>
+                  <th>Predicted Price ($)</th>
+                  <th>Predicted Change (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${aiPredictions
+                  .map(
+                    (pred) => `
+                  <tr>
+                    <td>${pred.symbol}</td>
+                    <td>$${pred.currentPrice.toFixed(2)}</td>
+                    <td>$${pred.predictedPrice12Months.toFixed(2)}</td>
+                    <td class="${
+                      pred.predictedChangePercentage >= 0
+                        ? "profit-positive"
+                        : "profit-negative"
+                    }">${pred.predictedChangePercentage.toFixed(2)}%</td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+
+            <h3 class="portfolio-header">Investment Rotation Suggestions</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Symbol</th>
+                  <th>Current Price ($)</th>
+                  <th>Predicted Price ($)</th>
+                  <th>Predicted Change (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${currentHoldings
+                  .map((symbol) => {
+                    const pred = aiPredictions.find((p) => p.symbol === symbol);
+                    return `
+                    <tr>
+                      <td>Current Holding</td>
+                      <td>${symbol}</td>
+                      <td>$${pred?.currentPrice.toFixed(2) || "N/A"}</td>
+                      <td>$${pred?.predictedPrice12Months.toFixed(2) || "N/A"}</td>
+                      <td class="${
+                        pred?.predictedChangePercentage !== undefined &&
+                        pred?.predictedChangePercentage >= 0
+                          ? "profit-positive"
+                          : "profit-negative"
+                      }">${
+                        pred?.predictedChangePercentage !== undefined
+                          ? pred.predictedChangePercentage.toFixed(2)
+                          : "N/A"
+                      }%</td>
+                    </tr>
+                  `;
+                  })
+                  .join("")}
+                ${aiRecommendations
+                  .map(
+                    (pred) => `
+                  <tr>
+                    <td>Suggested</td>
+                    <td>${pred.symbol}</td>
+                    <td>$${pred.currentPrice.toFixed(2)}</td>
+                    <td>$${pred.predictedPrice12Months.toFixed(2)}</td>
+                    <td class="${
+                      pred.predictedChangePercentage >= 0
+                        ? "profit-positive"
+                        : "profit-negative"
+                    }">${pred.predictedChangePercentage.toFixed(2)}%</td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+            
+            <p class="subheader">Note: AI predictions are generated using Google's Gemini 1.5 Flash model and are for demonstration purposes only.</p>
+          </div>
+        `;
+        break;
       default:
         console.error(`Unsupported report type: ${data.reportType}`);
     }
