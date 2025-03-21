@@ -88,6 +88,7 @@ export default async function fetchAssets() {
                 price: convertedPrice,
                 market: stock.exchangeShortName,
                 asset_type: stock.type,
+                last_updated: new Date(),
               },
             },
             upsert: true,

@@ -7,6 +7,7 @@ export interface IAsset extends Document {
   asset_type: string;
   price: number;
   market: string;
+  last_updated: Date;
 }
 
 const assetSchema: Schema = new mongoose.Schema({
@@ -30,6 +31,10 @@ const assetSchema: Schema = new mongoose.Schema({
   market: {
     type: String,
     required: true,
+  },
+  last_updated: {
+    type: Date,
+    default: Date.now,
   },
 });
 assetSchema.index({ symbol: "text", name: "text" }); // Text index for full-text search

@@ -1,31 +1,13 @@
 import puppeteer from "puppeteer";
 import { format } from "date-fns";
 import { PortfolioData } from "@/types/portfolio";
+import {
+  getAIPredictions,
+  getAIRecommendations,
+  AIPrediction,
+} from "@/lib/AIUtils";
+import { getTodayPriceBySymbol } from "@/lib/stockPrices";
 
-interface AIPrediction {
-  symbol: string;
-  currentPrice: number;
-  predictedPrice12Months: number;
-  predictedChangePercentage: number;
-}
-
-async function getAIPredictions(symbols: string[]): Promise<AIPrediction[]> {
-  return symbols.map((symbol) => ({
-    symbol,
-    currentPrice: Math.random() * 100 + 50,
-    predictedPrice12Months: Math.random() * 150 + 50,
-    predictedChangePercentage: Math.random() * 50 - 25, // -25% to +25%
-  }));
-}
-
-async function getAIRecommendations(
-  currentHoldings: string[],
-): Promise<AIPrediction[]> {
-  const suggested = ["AAPL", "MSFT", "VTI", "SPY", "GOOGL"]
-    .filter((s) => !currentHoldings.includes(s))
-    .slice(0, 3);
-  return getAIPredictions(suggested);
-}
 export async function generatePDF(data: PortfolioData): Promise<Buffer> {
   try {
     const isSummaryReport = data.reportType === "summary";
@@ -94,7 +76,11 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
             ? "Income Report"
             : data.reportType === "portfolio_report"
               ? "Portfolio Report"
-              : "Summary Report"
+              : data.reportType === "summary"
+                ? "Summary Report"
+                : data.reportType === "ai_portfolio_summary"
+                  ? "AI Portfolio Summary"
+                  : "AI Account Summary"
         }</h1>
         <p class="subheader">Report Date: ${formattedToDate}</p>
         <div>
@@ -109,7 +95,6 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
         </div>
     `;
 
-    // Add content based on reportType
     switch (data.reportType) {
       case "income_report":
         htmlContent += `
@@ -460,17 +445,57 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
           </div>
         `;
         break;
+
       case "ai_portfolio_summary":
       case "ai_account_summary":
         const isAccountSummary = data.reportType === "ai_account_summary";
-        const currentHoldings = Object.values(data.portfolioHoldings).flatMap(
-          (h) => Object.keys(h.stockHoldingsTo),
+        const currentHoldings =
+          data.portfolioHoldings &&
+          Object.keys(data.portfolioHoldings).length > 0
+            ? [
+                ...new Set(
+                  Object.values(data.portfolioHoldings).flatMap((h) =>
+                    Object.keys(h.stockHoldingsTo),
+                  ),
+                ),
+              ]
+            : [];
+
+        if (currentHoldings.length === 0) {
+          htmlContent += `
+            <div>
+              <h2 class="section-header">${
+                isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
+              } as of ${formattedToDate}</h2>
+              <p>No holdings available to generate AI predictions.</p>
+            </div>
+          `;
+          break;
+        }
+
+        console.log("Current holdings: ", currentHoldings);
+
+        const pricePromises = currentHoldings.map(async (symbol) => ({
+          symbol,
+          price: await getTodayPriceBySymbol(symbol),
+        }));
+        const prices = await Promise.all(pricePromises);
+        const currentPrices: Record<string, number> = prices.reduce(
+          (acc, { symbol, price }) => {
+            acc[symbol] = price;
+            return acc;
+          },
+          {} as Record<string, number>,
         );
 
-        const aiPredictions: AIPrediction[] =
-          await getAIPredictions(currentHoldings);
-        const aiRecommendations: AIPrediction[] =
-          await getAIRecommendations(currentHoldings);
+        const aiPredictions: AIPrediction[] = await getAIPredictions(
+          currentHoldings,
+          currentPrices,
+        );
+        const aiRecommendations: AIPrediction[] = await getAIRecommendations(
+          data.portfolioHoldings || {},
+          aiPredictions,
+        );
 
         htmlContent += `
           <div>
@@ -508,11 +533,10 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
               </tbody>
             </table>
 
-            <h3 class="portfolio-header">Investment Rotation Suggestions</h3>
+           <h3 class="portfolio-header">Investment Rotation Suggestions</h3>
             <table>
               <thead>
                 <tr>
-                  <th>Category</th>
                   <th>Symbol</th>
                   <th>Current Price ($)</th>
                   <th>Predicted Price ($)</th>
@@ -520,35 +544,11 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
                 </tr>
               </thead>
               <tbody>
-                ${currentHoldings
-                  .map((symbol) => {
-                    const pred = aiPredictions.find((p) => p.symbol === symbol);
-                    return `
-                    <tr>
-                      <td>Current Holding</td>
-                      <td>${symbol}</td>
-                      <td>$${pred?.currentPrice.toFixed(2) || "N/A"}</td>
-                      <td>$${pred?.predictedPrice12Months.toFixed(2) || "N/A"}</td>
-                      <td class="${
-                        pred?.predictedChangePercentage !== undefined &&
-                        pred?.predictedChangePercentage >= 0
-                          ? "profit-positive"
-                          : "profit-negative"
-                      }">${
-                        pred?.predictedChangePercentage !== undefined
-                          ? pred.predictedChangePercentage.toFixed(2)
-                          : "N/A"
-                      }%</td>
-                    </tr>
-                  `;
-                  })
-                  .join("")}
                 ${aiRecommendations
                   .map(
                     (pred) => `
                   <tr>
-                    <td>Suggested</td>
-                    <td>${pred.symbol}</td>
+                    <td>${pred.symbol || "N/A"}</td>
                     <td>$${pred.currentPrice.toFixed(2)}</td>
                     <td>$${pred.predictedPrice12Months.toFixed(2)}</td>
                     <td class="${
@@ -562,11 +562,34 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
                   .join("")}
               </tbody>
             </table>
+
+            <h3 class="portfolio-header">Suggestions Justifications</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Stock Symbol</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${aiRecommendations
+                  .map(
+                    (pred) => `
+                  <tr>
+                    <td>${pred.symbol || "N/A"}</td>
+                    <td>${pred.justification || "No reasoning provided"}</td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
             
-            <p class="subheader">Note: AI predictions are generated using Google's Gemini 1.5 Flash model and are for demonstration purposes only.</p>
+            <p class="subheader">Note: AI predictions are generated using Google's Gemini 2.0 Flash model and are for demonstration purposes only.</p>
           </div>
         `;
         break;
+
       default:
         console.error(`Unsupported report type: ${data.reportType}`);
     }
@@ -576,7 +599,6 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
       </html>
     `;
 
-    // Launch Puppeteer and generate the PDF
     console.log("Launching Puppeteer to generate PDF...");
     const browser = await puppeteer.launch({
       headless: true,

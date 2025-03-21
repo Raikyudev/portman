@@ -38,7 +38,6 @@ export async function GET(request: Request) {
 
     console.log(`Fetching details for symbol: ${symbol}`);
 
-    // Call the getAssetDetailsData function to fetch and convert the data
     const details = await getAssetDetailsData(symbol);
 
     const responseData: AssetDetailsData = {
