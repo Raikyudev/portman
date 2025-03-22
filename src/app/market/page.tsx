@@ -33,10 +33,10 @@ export default function MarketPage() {
       price: number;
       change: string;
     }[]
-  >([]); // Initialize as empty array
+  >([]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const watchlistRef = useRef<{ refetch: () => Promise<void> }>(null); // Ref to access Watchlist's refetch method
+  const watchlistRef = useRef<{ refetch: () => Promise<void> }>(null);
 
   const fetchAssets = useCallback(async () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
