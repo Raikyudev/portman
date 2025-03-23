@@ -65,7 +65,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="flex items-center justify-center bg-black p-24 border-2 border-white rounded-lg">
+    <div className="flex items-center justify-center bg-black p-24 rounded-lg">
       <div className="w-full max-w-[400px] space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-red">

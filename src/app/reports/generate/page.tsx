@@ -238,7 +238,6 @@ export default function Page() {
                 >
                   <div className="flex flex-col md:flex-row gap-6">
                     <div className="flex-1 space-y-6">
-                      {/* Name */}
                       <FormField
                         control={form.control}
                         name="name"
@@ -257,7 +256,6 @@ export default function Page() {
                         )}
                       />
 
-                      {/* Report Type */}
                       <FormField
                         control={form.control}
                         name="type"
@@ -412,13 +410,15 @@ export default function Page() {
                       />
                     </div>
                   </div>
+                  <div className="flex justify-center items-center">
+                    <Button
+                        type="submit"
+                        className="bg-red hover:bg-white hover:text-true-black text-white font-semibold p-3 rounded-lg"
+                    >
+                      Generate Report
+                    </Button>
+                  </div>
 
-                  <Button
-                    type="submit"
-                    className="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg w-full"
-                  >
-                    Generate Report
-                  </Button>
                 </form>
               </Form>
             </CardContent>

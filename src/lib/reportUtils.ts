@@ -8,7 +8,7 @@ import {
 } from "@/lib/AIUtils";
 import { getTodayPriceBySymbol } from "@/lib/stockPrices";
 
-export async function generatePDF(data: PortfolioData): Promise<Buffer> {
+export async function generatePDF(data: PortfolioData, first_name: string, last_name: string): Promise<Buffer> {
   try {
     const isSummaryReport = data.reportType === "summary";
     const formattedToDate = format(new Date(data.toDate), "dd-MM-yyyy");
@@ -67,10 +67,28 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
           .profit-negative {
             color: red;
           }
+           .top-bar {
+        background-color: black;
+        color: red;
+        padding: 15px;
+        text-align: left;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .top-bar-underline {
+        border-bottom: 4px solid red;
+        margin: 0;
+      }
+
         </style>
         <title>${data.reportType} Report</title>
       </head>
       <body>
+      <div class="top-bar">
+      Portman
+    </div>
+    <div class="top-bar-underline"></div>
+
         <h1>${
           data.reportType === "income_report"
             ? "Income Report"
@@ -82,17 +100,32 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
                   ? "AI Portfolio Summary"
                   : "AI Account Summary"
         }</h1>
+        <p class="subheader">Name: ${first_name} ${last_name}</p>
         <p class="subheader">Report Date: ${formattedToDate}</p>
+
         <div>
-          <h2 class="section-header">Portfolios Included</h2>
-          ${data.portfolios
-            .map(
-              (portfolio) => `
-              <p>${portfolio.name} ${portfolio.description ? ` - ${portfolio.description}` : ""}</p>
-            `,
-            )
-            .join("")}
-        </div>
+  <h2 class="section-header">Portfolios Included</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Portfolio Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${data.portfolios
+        .map(
+            (portfolio) => `
+          <tr>
+            <td>${portfolio.name || "N/A"}</td>
+            <td>${portfolio.description || "N/A"}</td>
+          </tr>
+        `,
+        )
+        .join("")}
+    </tbody>
+  </table>
+</div>
     `;
 
     switch (data.reportType) {
@@ -466,7 +499,7 @@ export async function generatePDF(data: PortfolioData): Promise<Buffer> {
             <div>
               <h2 class="section-header">${
                 isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
-              } as of ${formattedToDate}</h2>
+              } as of ${formattedToDate} </h2>
               <p>No holdings available to generate AI predictions.</p>
             </div>
           `;

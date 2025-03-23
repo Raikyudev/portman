@@ -142,7 +142,7 @@ export default function PerformanceChart({
             </>
           )}
         </div>
-        <div className="flex-1 h-[15vh]">
+        <div className="flex-1 h-[27vh]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <XAxis

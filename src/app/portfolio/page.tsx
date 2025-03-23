@@ -169,7 +169,7 @@ export default function Page() {
           {/* Entire content centered vertically */}
           <div className="w-full">
             {/* Header section */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               <PortfolioHeader
                 selectedPortfolioName={
                   selectedPortfolio?.name || "Portfolio Name"

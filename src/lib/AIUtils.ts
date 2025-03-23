@@ -139,7 +139,7 @@ I need you to put a dot "." after the last symbol. For the justification, make s
 At the end of your response (After giving your reasons for all the stocks already) return expected growth percentage for each stock in the format: "Symbol1: X%, Symbol2: Y%, Symbol3: Z%,"
 The stocks you choose don't have to be from 1 specific sector. Try to look at a broader market to find the best picks.
 The price growth predictions don't have to be even numbers, it could be something like 32.48% for example.
-Don't leave a gap between the sections of your response.`;
+Don't leave a gap (So no more than one new line) between the sections of your response.`;
 
   const response = await callGeminiAPI(prompt);
   console.log("Recommendation response: ", response);

@@ -15,7 +15,6 @@ export default function Home() {
   return (
       <div className="">
         <div className="grid grid-cols-2 w-screen h-[calc(100vh-70px)] bg-true-black bg-[url('/homepage1.png')] bg-no-repeat bg-[length:60%_auto] bg-left relative">
-          {/* Left Column */}
           <div className="flex flex-col justify-center items-center col-span-1  gap-4 p-10">
             <div className="text-5xl text-white">Portman</div>
             <div className="flex flex-col justify-center items-center mb-4 text-white">
@@ -24,7 +23,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="flex flex-col col-span-1 bg-true-black rounded-bl-[60px] justify-center items-center p-10">
             <div className="flex flex-col gap-4 w-1/2 text-left">
               <div className="text-4xl">

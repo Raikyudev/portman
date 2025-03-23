@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import * as z from "zod";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -207,106 +208,119 @@ export default function Page() {
 
   return (
     <div>
-      <h1>Add Transaction</h1>
+      <Card className="bg-true-black w-full">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">
+            Add Transaction
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-2 grid-rows-6 w-[70vh] h-[50vh] bg-true-black">
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div>
-          <label>Search Asset</label>
-          <input
-            type="text"
-            onChange={(e) =>
-              setSearchQuery(e.target.value + "&limit=10&page=1")
-            }
-            placeholder="Search for an asset by a symbol or name"
-          />
-          {searchResults.length > 0 && (
-            <ul>
-              {searchResults.map((asset) => (
-                <li
-                  key={asset._id}
-                  onClick={() => {
-                    setSelectedAsset(asset);
-                    setSearchResults([]); //Hide the results after selection
-                    setValue("asset_id", asset._id);
-                  }}
-                  style={{ cursor: "pointer" }}
+                <label className="col-span-1">Search Asset</label>
+                <input className="no-border col-span-1"
+                       type="text"
+                       onChange={(e) =>
+                           setSearchQuery(e.target.value + "&limit=10&page=1")
+                       }
+                       placeholder="Search for an asset by a symbol or name"
+                />
+                {searchResults.length > 0 && (
+                    <ul>
+                      {searchResults.map((asset) => (
+                          <li
+                              key={asset._id}
+                              onClick={() => {
+                                setSelectedAsset(asset);
+                                setSearchResults([]); //Hide the results after selection
+                                setValue("asset_id", asset._id);
+                              }}
+                              style={{ cursor: "pointer" }}
+                          >
+                            {asset.symbol} - {asset.name}
+                          </li>
+                      ))}
+                    </ul>
+                )}
+
+              {selectedAsset && (
+                  <p>
+                    <strong>Selected Stock: </strong> {selectedAsset.symbol} -{" "}
+                    {selectedAsset.name}
+                  </p>
+              )}
+
+              <div className="flex gap-4 items-center mb-4">
+                <label>Transaction Type</label>
+                <select {...register("tx_type")} className="bg-black">
+                  <option value="buy">Buy</option>
+                  <option value="sell">Sell</option>
+                </select>
+              </div>
+
+              <div className="flex gap-4 items-center mb-4">
+                <label>Quantity</label>
+                <input className="no-border"
+                       type="number"
+                       {...register("quantity", { valueAsNumber: true })}
+                />
+                {errors.quantity && (
+                    <p className="text-red">{errors.quantity.message}</p>
+                )}
+              </div>
+
+              <div className="flex gap-4 items-center mb-4">
+                <label>Price Per Unit</label>
+                <input className="no-border"
+                       type="number"
+                       {...register("price_per_unit", { valueAsNumber: true })}
+                />
+                {errors.price_per_unit && (
+                    <p className="text-red">{errors.price_per_unit.message}</p>
+                )}
+              </div>
+
+              <div className="flex gap-4 items-center mb-4">
+                <label>Currency</label>
+                <select
+                    {...register("currency")}
+                    defaultValue={"USD"}
+                    className="bg-black"
                 >
-                  {asset.symbol} - {asset.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {selectedAsset && (
-          <p>
-            <strong>Selected Stock: </strong> {selectedAsset.symbol} -{" "}
-            {selectedAsset.name}
-          </p>
-        )}
+                  <option value="" disabled>
+                    Select a currency
+                  </option>
+                  {SUPPORTED_CURRENCIES.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                  ))}
+                </select>
+              </div>
 
-        <div>
-          <label>Transaction Type</label>
-          <select {...register("tx_type")} className="bg-black">
-            <option value="buy">Buy</option>
-            <option value="sell">Sell</option>
-          </select>
-        </div>
+              <div className="flex gap-4 items-center mb-4">
+                <label>Date</label>
+                <input className="no-border"
+                       type="date"
+                       {...register("tx_date")}
+                       onChange={(e) => setValue("tx_date", e.target.value)}
+                />
+              </div>
 
-        <div>
-          <label>Quantity</label>
-          <input
-            type="number"
-            {...register("quantity", { valueAsNumber: true })}
-          />
-          {errors.quantity && (
-            <p className="text-red">{errors.quantity.message}</p>
-          )}
-        </div>
+              {errors && <p className="text-red">{error}</p>}
 
-        <div>
-          <label>Price Per Unit</label>
-          <input
-            type="number"
-            {...register("price_per_unit", { valueAsNumber: true })}
-          />
-          {errors.price_per_unit && (
-            <p className="text-red">{errors.price_per_unit.message}</p>
-          )}
-        </div>
+            </div>
 
-        <div>
-          <label>Currency</label>
-          <select
-            {...register("currency")}
-            defaultValue={"USD"}
-            className="bg-black"
-          >
-            <option value="" disabled>
-              Select a currency
-            </option>
-            {SUPPORTED_CURRENCIES.map((currency) => (
-              <option key={currency} value={currency}>
-                {currency}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div className="flex justify-center items-center">
+              <button className="bg-red text-white hover:text-true-black hover:bg-white p-3 rounded-lg" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Adding transaction..." : "Add Transaction"}
+              </button>
+            </div>
 
-        <div>
-          <label>Date</label>
-          <input
-            type="date"
-            {...register("tx_date")}
-            onChange={(e) => setValue("tx_date", e.target.value)}
-          />
-        </div>
-
-        {errors && <p className="text-red">{error}</p>}
-
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Adding transaction..." : "Add Transaction"}
-        </button>
-      </form>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

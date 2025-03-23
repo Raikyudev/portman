@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       case "pdf":
       default:
         console.log("Generating PDF report...");
-        fileBuffer = await generatePDF(generationInputs);
+        fileBuffer = await generatePDF(generationInputs, session.user.first_name, session.user.last_name);
         mimeType = "application/pdf";
         break;
     }

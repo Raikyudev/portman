@@ -144,14 +144,12 @@ export default function MainMarketArea({
         />
       ) : (
         <div className="rounded-lg no-border shadow-sm bg-true-black flex flex-col h-full">
-          {/* Header Section */}
           <div className="flex flex-col lg:flex-row lg:justify-between items-center p-4 gap-4">
-            {/* Instruction and Watchlist Info */}
             <div className="flex flex-col sm:flex-row justify-center lg:justify-end gap-4 p-4 w-full lg:w-auto">
               <div className="bg-black p-4 text-gray text-sm rounded-lg font-semibold">
                 Choose an asset to see more details
               </div>
-              <div className="flex gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
+              <div className="flex items-center gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
                 <Image
                   src={WhiteFilledStar}
                   alt="White star icon"
@@ -163,7 +161,6 @@ export default function MainMarketArea({
               </div>
             </div>
 
-            {/* Pagination */}
             <div className="w-full lg:w-auto">
               {totalPages > 1 && (
                 <Pagination className="flex justify-center lg:justify-end">
@@ -174,8 +171,7 @@ export default function MainMarketArea({
               )}
             </div>
           </div>
-
-          {/* ScrollArea Section */}
+          
           {loading && <div className="text-center py-4">Loading assets...</div>}
           {!loading && assets.length === 0 && (
             <div className="text-center py-4">No assets found.</div>

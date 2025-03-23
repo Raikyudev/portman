@@ -4,12 +4,14 @@ import LoginForm from "@/components/LoginForm";
 
 export default function Page() {
   return (
-    <div
-      className={
-        "min-h-screen min-w-screen w-screen flex items-center justify-center bg-red p-4"
-      }
-    >
-      <LoginForm />
-    </div>
+      <div className="relative w-screen bg-[url('/money-bg.png')] bg-no-repeat bg-cover bg-center">
+          <div className="absolute inset-0 bg-red/60"></div>
+
+          <div className="relative flex items-center justify-center min-h-screen">
+              <LoginForm />
+          </div>
+      </div>
+
+
   );
 }

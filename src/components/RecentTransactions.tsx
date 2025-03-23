@@ -101,7 +101,7 @@ export default function RecentTransactions({
         {loading ? (
           <p>Loading transactions...</p>
         ) : (
-          <ScrollArea className="h-[16vh] w-full overflow-x-auto no-border overflow-x-auto whitespace-nowrap">
+          <ScrollArea className="h-[28vh] w-full overflow-x-auto no-border overflow-x-auto whitespace-nowrap">
             {" "}
             <Table>
               <TableHeader>
