@@ -61,13 +61,13 @@ export const authOptions: AuthOptions = {
           email: user.email,
           first_name: user.first_name,
           last_name: user.last_name,
-          preferences: user.preferences || {},
+          preferences: user.preferences,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         const userData = user;
         token.id = userData.id.toString();
@@ -76,6 +76,14 @@ export const authOptions: AuthOptions = {
         token.preferences = userData.preferences;
         token.first_name = userData.first_name;
         token.last_name = userData.last_name;
+      }
+      if (trigger === "update" && session) {
+        if (session.preferences) {
+          token.preferences = session.preferences;
+        }
+        if (session.email) {
+          token.email = session.email;
+        }
       }
       return token;
     },

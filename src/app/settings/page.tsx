@@ -12,22 +12,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
-import { ChangeAccountDetailsForm } from "@/components/ChangeAccountDetailsForm";
+import { useEffect, useState } from "react";
+import { ChangeEmailForm } from "@/components/ChangeEmailForm";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SUPPORTED_CURRENCIES } from "@/lib/constants";
+import { SUPPORTED_CURRENCIES, Currency } from "@/lib/constants";
+import { DeleteAccountForm } from "@/components/DeleteAccountForm";
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
-  const [preferredCurrency, setPreferredCurrency] = useState("USD");
+  const { data: session, status, update } = useSession();
+  const [preferredCurrency, setPreferredCurrency] = useState<Currency>();
   const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Currency display names for better UX
   const currencyDisplayNames: Record<string, string> = {
@@ -40,8 +43,38 @@ export default function SettingsPage() {
     CNY: "CNY - Chinese Yuan",
   };
 
-  if (status === "loading") return <div>Loading...</div>;
+  useEffect(() => {
+    if (session?.user?.preferences?.currency) {
+      setPreferredCurrency(session.user.preferences.currency as Currency);
+    }
+  }, [session]);
 
+  const handleCurrencyChange = async (newCurrency: string) => {
+    try {
+      const response = await fetch("/api/user/change-currency", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ currency: newCurrency }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(error.error || "Failed to update currency");
+      }
+
+      const result = await response.json();
+      setPreferredCurrency(newCurrency as Currency);
+
+      await update({
+        preferences: result.user.preferences,
+      });
+    } catch (error) {
+      console.error("Error updating currency:", error);
+    }
+  };
+  if (status === "loading") return <div>Loading...</div>;
   return (
     <ProtectedLayout>
       <div className="container mx-auto p-4">
@@ -50,7 +83,6 @@ export default function SettingsPage() {
           defaultValue="account"
           className="grid grid-cols-1 md:grid-cols-6 gap-6"
         >
-          {/* Sidebar with tab triggers */}
           <TabsList className="flex flex-col h-fit space-y-2 bg-true-black p-4 rounded-lg md:col-span-1">
             <TabsTrigger value="account" asChild>
               <Button variant="ghost" className="w-full justify-start">
@@ -64,7 +96,6 @@ export default function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Main content area */}
           <div className="md:col-span-5">
             <TabsContent value="portfolio">
               <Card>
@@ -86,7 +117,6 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {/* User Info */}
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="font-medium">First Name:</span>
@@ -102,7 +132,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Buttons */}
                     <div className="flex gap-4">
                       <Button onClick={() => setIsAccountDialogOpen(true)}>
                         Change Account Details
@@ -112,12 +141,11 @@ export default function SettingsPage() {
                       </Button>
                     </div>
 
-                    {/* Currency Selector */}
                     <div className="space-y-2 max-w-xs">
                       <label className="font-medium">Preferred Currency:</label>
                       <Select
                         value={preferredCurrency}
-                        onValueChange={setPreferredCurrency}
+                        onValueChange={handleCurrencyChange}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select currency" />
@@ -131,6 +159,15 @@ export default function SettingsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="flex gap-4">
+                      <Button
+                        variant="destructive"
+                        onClick={() => setIsDeleteDialogOpen(true)}
+                      >
+                        Delete Account
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -138,7 +175,6 @@ export default function SettingsPage() {
           </div>
         </Tabs>
 
-        {/* Dialogs for forms */}
         <Dialog
           open={isAccountDialogOpen}
           onOpenChange={setIsAccountDialogOpen}
@@ -147,9 +183,7 @@ export default function SettingsPage() {
             <DialogHeader>
               <DialogTitle>Change Account Details</DialogTitle>
             </DialogHeader>
-            <ChangeAccountDetailsForm
-              onClose={() => setIsAccountDialogOpen(false)}
-            />
+            <ChangeEmailForm onClose={() => setIsAccountDialogOpen(false)} />
           </DialogContent>
         </Dialog>
 
@@ -164,6 +198,20 @@ export default function SettingsPage() {
             <ChangePasswordForm
               onClose={() => setIsPasswordDialogOpen(false)}
             />
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Account</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. All data related to your account,
+                including portfolios, transactions, reports, and watchlists,
+                will be permanently deleted. Please enter your password to
+                confirm.
+              </DialogDescription>
+            </DialogHeader>
+            <DeleteAccountForm onClose={() => setIsDeleteDialogOpen(false)} />
           </DialogContent>
         </Dialog>
       </div>

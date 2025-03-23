@@ -11,6 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useSession } from "next-auth/react";
 
 const schema = z
   .object({
@@ -30,23 +31,45 @@ interface ChangePasswordFormProps {
 }
 
 export function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
+  const { update } = useSession();
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
   });
 
   const onSubmit = async (data: FormData) => {
     try {
-      console.log("Submitting password change:", data);
-      // await changePassword(data.currentPassword, data.newPassword);
-      onClose();
+      const response = await fetch("/api/user/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(error.error);
+        form.setError("root", { message: error.error });
+      } else {
+        const result = await response.json();
+        await update({
+          user: {
+            email: result.user.email,
+            name: `${result.user.first_name} ${result.user.last_name}`,
+            id: result.user.id,
+          },
+        });
+
+        onClose();
+      }
     } catch (error) {
-      console.error("Error changing password:", error);
-      form.setError("root", { message: "Failed to change password" });
+      console.error("Error updating password:", error);
+      form.setError("root", {
+        message: String(error) || "Failed to update password",
+      });
     }
   };
 

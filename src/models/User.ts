@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { Currency } from "@/lib/constants"; // Ensure Currency is both a type and a value or update accordingly
 
 interface IUserPreferences {
-  currency: string;
+  currency: Currency;
 }
 export interface IUser extends Document {
   _id: Schema.Types.ObjectId;

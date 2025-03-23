@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -13,74 +11,68 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useSession, signIn } from "next-auth/react";
 
 const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   password: z.string().min(1, "Password is required to confirm changes"),
 });
 
 type FormData = z.infer<typeof schema>;
 
-interface ChangeAccountDetailsFormProps {
+interface ChangeEmailFormProps {
   onClose: () => void;
   initialData?: Partial<FormData>;
 }
 
-export function ChangeAccountDetailsForm({
-  onClose,
-  initialData,
-}: ChangeAccountDetailsFormProps) {
+export function ChangeEmailForm({ onClose }: ChangeEmailFormProps) {
+  const { update } = useSession();
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      firstName: initialData?.firstName || "",
-      lastName: initialData?.lastName || "",
-      email: initialData?.email || "",
-      password: "",
-    },
   });
 
   const onSubmit = async (data: FormData) => {
     try {
-      console.log("Submitting account details:", data);
-      onClose();
+      const response = await fetch("/api/user/change-details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(error.error);
+        form.setError("root", { message: error.error });
+      } else {
+        const result = await response.json();
+        await update({
+          user: {
+            email: result.user.email,
+            name: `${result.user.first_name} ${result.user.last_name}`,
+            id: result.user.id,
+          },
+        });
+
+        await signIn("credentials", {
+          email: data.email,
+          password: data.password,
+          redirect: false,
+        });
+        onClose();
+      }
     } catch (error) {
-      console.error("Error updating account details:", error);
-      form.setError("root", { message: "Failed to update account details" });
+      console.error("Error updating email:", error);
+      form.setError("root", {
+        message: String(error) || "Failed to update email",
+      });
     }
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter first name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="lastName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Last Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter last name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <FormField
           control={form.control}
           name="email"
@@ -112,7 +104,7 @@ export function ChangeAccountDetailsForm({
           )}
         />
         {form.formState.errors.root && (
-          <p className="text-red-500 text-sm">
+          <p className="text-red text-sm">
             {form.formState.errors.root.message}
           </p>
         )}
