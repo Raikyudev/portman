@@ -30,7 +30,6 @@ export async function GET(request: Request) {
 
   await dbConnect();
 
-  // Retrieve session and currency using getServerSession
   const session = await getServerSession(authOptions);
   const userCurrency = session?.user?.preferences?.currency || "USD"; // Fallback to USD
 
@@ -39,7 +38,6 @@ export async function GET(request: Request) {
     let total: number;
 
     if (specialCase) {
-      // Use broadMarketFetch for special case with user's currency from session
       const marketData = await broadMarketFetch({
         page,
         limit,
@@ -83,9 +81,9 @@ export async function GET(request: Request) {
           },
           {
             $sort: {
-              isExactSymbolMatch: -1, // Exact matches first (if query exists)
-              assetTypePriority: 1, // Then by asset type priority (ascending)
-              symbol: 1, // Finally by symbol alphabetically (ascending)
+              isExactSymbolMatch: -1,
+              assetTypePriority: 1,
+              symbol: 1,
             },
           },
           {
@@ -127,7 +125,6 @@ export async function GET(request: Request) {
       assets = data.assets as IAsset[];
       total = data.total || 0;
 
-      // Filter out assets missing required fields
       assets = assets.filter((asset) => {
         if (!asset.symbol || !asset.name) {
           console.warn(
@@ -138,6 +135,15 @@ export async function GET(request: Request) {
         }
         return true;
       });
+    }
+
+    if (assets.length === 0) {
+      return NextResponse.json(
+        {
+          error: "No assets found matching the criteria.",
+        },
+        { status: 404 },
+      );
     }
 
     let enrichedAssets: IExtendedAsset[];

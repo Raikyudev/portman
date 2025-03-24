@@ -36,7 +36,6 @@ export default function Page() {
   console.log("Portfolio ID:", portfolioId);
   const fetchPortfoliosAndHistory = useCallback(async () => {
     try {
-      // Step 1: Fetch the list of portfolios
       const queryParam = portfolioId ? `?id=${portfolioId}` : "";
       const portfolioResponse = await fetch(`/api/portfolio${queryParam}`, {
         credentials: "include",
@@ -52,7 +51,6 @@ export default function Page() {
         : portfolioDataFull;
       const portfolioDataId = portfolioDataFull.portfolioId || false;
 
-      // Step 2: Fetch history for each portfolio individually
       const updatedPortfolios: IExtendedPortfolio[] = await Promise.all(
         portfolioData.map(async (portfolio: IExtendedPortfolio) => {
           const historyResponse = await fetch(
@@ -179,7 +177,6 @@ export default function Page() {
                 initialPortfolioId={expandedPortfolio ?? undefined}
                 portfolioValue={portfolioValue}
                 profit={profit}
-
               />
               {expandedPortfolio ? (
                 <AddTransactionButton

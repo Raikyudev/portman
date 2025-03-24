@@ -1,9 +1,8 @@
-// pages/api/user-portfolios.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
-import Portfolio from "@/models/Portfolio"; // Adjust import path
+import Portfolio from "@/models/Portfolio";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Adjust import path
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   await dbConnect();

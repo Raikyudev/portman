@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { SUPPORTED_CURRENCIES, Currency } from "@/lib/constants";
 import { DeleteAccountForm } from "@/components/DeleteAccountForm";
+import PortfolioSettingsList from "@/components/PortfolioSettingsList";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
@@ -103,9 +104,7 @@ export default function SettingsPage() {
                   <CardTitle>Portfolio Settings</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <p>Portfolio settings content goes here</p>
-                  </div>
+                  <PortfolioSettingsList />
                 </CardContent>
               </Card>
             </TabsContent>

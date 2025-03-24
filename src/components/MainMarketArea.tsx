@@ -1,4 +1,3 @@
-
 import WatchlistButton from "./WatchlistButton";
 import { IExtendedAsset } from "@/types/asset";
 import {
@@ -71,7 +70,6 @@ export default function MainMarketArea({
     const startPage = Math.max(1, currentPage - 1); // One page before current
     const endPage = Math.min(totalPages, currentPage + 1); // One page after current
 
-    // Add "Previous" button
     items.push(
       <PaginationItem key="previous">
         <PaginationPrevious
@@ -84,7 +82,6 @@ export default function MainMarketArea({
       </PaginationItem>,
     );
 
-    // Add ellipsis before if there are pages before startPage
     if (startPage > 1) {
       items.push(
         <PaginationItem key="ellipsis-start">
@@ -93,7 +90,6 @@ export default function MainMarketArea({
       );
     }
 
-    // Add page numbers (current, one before, one after)
     for (let page = startPage; page <= endPage; page++) {
       items.push(
         <PaginationItem key={page}>
@@ -108,7 +104,6 @@ export default function MainMarketArea({
       );
     }
 
-    // Add ellipsis after if there are pages after endPage
     if (endPage < totalPages) {
       items.push(
         <PaginationItem key="ellipsis-end">
@@ -117,7 +112,6 @@ export default function MainMarketArea({
       );
     }
 
-    // Add "Next" button
     items.push(
       <PaginationItem key="next">
         <PaginationNext
@@ -171,7 +165,7 @@ export default function MainMarketArea({
               )}
             </div>
           </div>
-          
+
           {loading && <div className="text-center py-4">Loading assets...</div>}
           {!loading && assets.length === 0 && (
             <div className="text-center py-4">No assets found.</div>

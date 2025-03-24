@@ -9,6 +9,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { getTodayDate } from "@/lib/utils";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 const transactionSchema = z.object({
   asset_id: z.string().min(1, "Please select a stock"),
@@ -28,8 +30,9 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<
-      { _id: string; symbol: string; name: string; currency: string }[]
+    { _id: string; symbol: string; name: string; currency: string }[]
   >([]);
+  const [notFound, setNotFound] = useState<boolean>(false);
   const [selectedAsset, setSelectedAsset] = useState<{
     _id: string;
     symbol: string;
@@ -37,7 +40,7 @@ export default function Page() {
     currency: string;
   } | null>(null);
   const [isPortfolioOwner, setIsPortfolioOwner] = useState<boolean | null>(
-      null,
+    null,
   );
 
   useEffect(() => {
@@ -73,22 +76,32 @@ export default function Page() {
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
+      setNotFound(false);
       return;
     }
 
     const fetchAssets = async () => {
       try {
         console.log("Fetching assets with query:", searchQuery);
-        const response = await fetch(`/api/assets/search?query=${searchQuery}`);
+        const response = await fetch(
+          `/api/assets/search?query=${searchQuery}&limit=10&page=1`,
+        );
         console.log("Response status:", response.status);
         if (response.ok) {
           const data = await response.json();
           console.log("API Response:", data);
           setSearchResults(data.assets || []);
+          setError(null);
         } else {
-          console.error("API request failed:", response.status, response.statusText);
-          setSearchResults([]);
-          setError("Failed to fetch assets. Please try again.");
+          if (searchQuery.length >= 2) {
+            console.error(
+              "API request failed:",
+              response.status,
+              response.statusText,
+            );
+            setSearchResults([]);
+            setNotFound(true);
+          }
         }
       } catch (error) {
         console.error("Error fetching assets:", error);
@@ -151,34 +164,40 @@ export default function Page() {
       const txDate = data.tx_date;
 
       const deleteResponse = await fetch(
-          `/api/portfolio-history/individual-delete?portfolio_id=${params.id}&date=${txDate}`,
-          {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-          },
+        `/api/portfolio-history/individual-delete?portfolio_id=${params.id}&date=${txDate}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        },
       );
 
       const deleteResult = await deleteResponse.json();
       console.log("Delete history result:", deleteResult);
 
       if (!deleteResponse.ok) {
-        console.warn("Delete failed, proceeding with save:", deleteResult.error);
+        console.warn(
+          "Delete failed, proceeding with save:",
+          deleteResult.error,
+        );
       }
 
       console.log("Params: ");
       console.log(params);
       console.log("PortfolioID: " + portfolioId + " Date: " + txDate + "");
-      const saveResponse = await fetch(`/api/portfolio-history/individual-save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          portfolio_id: portfolioId,
-          fromDate: txDate,
-          toDate: getTodayDate(),
-          forceUpdate: true,
-          userId: session?.user?.id,
-        }),
-      });
+      const saveResponse = await fetch(
+        `/api/portfolio-history/individual-save`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolio_id: portfolioId,
+            fromDate: txDate,
+            toDate: getTodayDate(),
+            forceUpdate: true,
+            userId: session?.user?.id,
+          }),
+        },
+      );
 
       const saveResult = await saveResponse.json();
       console.log("Save history result:", saveResult);
@@ -207,130 +226,143 @@ export default function Page() {
     return <p>Loading...</p>;
 
   return (
-      <div>
-        <Card className="bg-true-black w-[70vh] flex flex-col items-center">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">
-              Add Transaction
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <div className="grid grid-cols-2 grid-rows-6 gap-4 w-[50vh] min-h-[50vh] bg-true-black">
-                <label className="col-span-1">Search Asset</label>
-                <div className="col-span-1 relative">
-                  <input
-                      className="no-border py-2 w-full"
-                      type="text"
-                      onChange={(e) => setSearchQuery(e.target.value + "&limit=10&page=1")}
-                      placeholder="Enter stock symbol or name"
-                  />
-                  {searchResults.length > 0 ? (
-                      <ul className="absolute bg-true-black border border-gray-700 mt-1 w-full max-h-40 overflow-y-auto z-10">
-                        {searchResults.map((asset) => (
-                            <li
-                                key={asset._id}
-                                onClick={() => {
-                                  setSelectedAsset(asset);
-                                  setSearchResults([]);
-                                  setValue("asset_id", asset._id);
-                                }}
-                                className="p-2 hover:bg-gray-800 cursor-pointer"
-                            >
-                              {asset.symbol} - {asset.name}
-                            </li>
-                        ))}
-                      </ul>
-                  ) : searchQuery.length >= 2 ? (
-                      <p className="text-red mt-1">No results found</p>
-                  ) : null}
-                </div>
-
-                {selectedAsset && (
-                    <p className="flex items-center col-span-2 bg-red rounded text-white p-2">
-                      <strong>Selected Stock: </strong> {selectedAsset.symbol} -{" "}
-                      {selectedAsset.name}
-                    </p>
-                )}
-
-                <label className="col-span-1">Transaction Type</label>
-                <div className="col-span-1 flex flex-col">
-                  <select
-                      {...register("tx_type")}
-                      className="bg-black rounded py-2 w-full"
-                  >
-                    <option value="buy">Buy</option>
-                    <option value="sell">Sell</option>
-                  </select>
-                </div>
-
-                <label className="col-span-1">Quantity</label>
-                <div className="col-span-1 flex flex-col">
-                  <input
-                      className="no-border py-2 w-full"
-                      type="number"
-                      {...register("quantity", { valueAsNumber: true })}
-                  />
-                  {errors.quantity && (
-                      <p className="text-red">{errors.quantity.message}</p>
-                  )}
-                </div>
-
-                <label className="col-span-1">Price Per Unit</label>
-                <div className="col-span-1 flex flex-col">
-                  <input
-                      className="no-border py-2 w-full"
-                      type="number"
-                      {...register("price_per_unit", { valueAsNumber: true })}
-                  />
-                  {errors.price_per_unit && (
-                      <p className="text-red">{errors.price_per_unit.message}</p>
-                  )}
-                </div>
-
-                <label className="col-span-1">Currency</label>
-                <div className="col-span-1 flex flex-col">
-                  <select
-                      {...register("currency")}
-                      defaultValue={"USD"}
-                      className="bg-black rounded py-2 w-full"
-                  >
-                    <option value="" disabled>
-                      Select a currency
-                    </option>
-                    {SUPPORTED_CURRENCIES.map((currency) => (
-                        <option key={currency} value={currency}>
-                          {currency}
-                        </option>
+    <div>
+      <Card className="bg-true-black w-[70vh] flex flex-col items-center">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Add Transaction</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-gray-800"
+            aria-label="Go back to portfolio page"
+            onClick={() => router.push(`/portfolio?id=${params.id}`)}
+          >
+            <Image
+              src="/white-arrow.svg"
+              alt="Back Arrow"
+              width={32}
+              height={32}
+              className="bg-black hover:bg-red rounded-md"
+            />
+          </Button>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-2 grid-rows-6 gap-4 w-[50vh] min-h-[50vh] bg-true-black">
+              <label className="col-span-1">Search Asset</label>
+              <div className="col-span-1 relative">
+                <input
+                  className="no-border py-2 w-full"
+                  type="text"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Enter stock symbol or name"
+                />
+                {searchResults.length > 0 ? (
+                  <ul className="absolute bg-true-black border border-gray-700 mt-1 w-full max-h-40 overflow-y-auto z-10">
+                    {searchResults.map((asset) => (
+                      <li
+                        key={asset._id}
+                        onClick={() => {
+                          setSelectedAsset(asset);
+                          setSearchResults([]);
+                          setValue("asset_id", asset._id);
+                        }}
+                        className="p-2 hover:bg-gray-800 cursor-pointer"
+                      >
+                        {asset.symbol} - {asset.name}
+                      </li>
                     ))}
-                  </select>
-                </div>
-
-                <label className="col-span-1">Date</label>
-                <div className="col-span-1 flex flex-col">
-                  <input
-                      className="no-border py-2 w-full"
-                      type="date"
-                      {...register("tx_date")}
-                      onChange={(e) => setValue("tx_date", e.target.value)}
-                  />
-                </div>
-
-                {error && <p className="col-span-2 text-red">{error}</p>}
+                  </ul>
+                ) : searchQuery.length >= 2 && notFound ? (
+                  <p className="text-red mt-1">No results found</p>
+                ) : null}
               </div>
 
-              <div className="flex justify-center items-center">
-                <button
-                    className="bg-red text-white hover:text-true-black hover:bg-white p-3 rounded-lg"
-                    type="submit"
-                    disabled={isSubmitting}
+              {selectedAsset && (
+                <p className="flex items-center col-span-2 bg-red rounded text-white p-2">
+                  <strong>Selected Stock: </strong> {selectedAsset.symbol} -{" "}
+                  {selectedAsset.name}
+                </p>
+              )}
+
+              <label className="col-span-1">Transaction Type</label>
+              <div className="col-span-1 flex flex-col">
+                <select
+                  {...register("tx_type")}
+                  className="bg-black rounded py-2 w-full"
                 >
-                  {isSubmitting ? "Adding transaction..." : "Add Transaction"}
-                </button>
+                  <option value="buy">Buy</option>
+                  <option value="sell">Sell</option>
+                </select>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+
+              <label className="col-span-1">Quantity</label>
+              <div className="col-span-1 flex flex-col">
+                <input
+                  className="no-border py-2 w-full"
+                  type="number"
+                  {...register("quantity", { valueAsNumber: true })}
+                />
+                {errors.quantity && (
+                  <p className="text-red">{errors.quantity.message}</p>
+                )}
+              </div>
+
+              <label className="col-span-1">Price Per Unit</label>
+              <div className="col-span-1 flex flex-col">
+                <input
+                  className="no-border py-2 w-full"
+                  type="number"
+                  {...register("price_per_unit", { valueAsNumber: true })}
+                />
+                {errors.price_per_unit && (
+                  <p className="text-red">{errors.price_per_unit.message}</p>
+                )}
+              </div>
+
+              <label className="col-span-1">Currency</label>
+              <div className="col-span-1 flex flex-col">
+                <select
+                  {...register("currency")}
+                  defaultValue={"USD"}
+                  className="bg-black rounded py-2 w-full"
+                >
+                  <option value="" disabled>
+                    Select a currency
+                  </option>
+                  {SUPPORTED_CURRENCIES.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currency}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="col-span-1">Date</label>
+              <div className="col-span-1 flex flex-col">
+                <input
+                  className="no-border py-2 w-full"
+                  type="date"
+                  {...register("tx_date")}
+                  onChange={(e) => setValue("tx_date", e.target.value)}
+                />
+              </div>
+
+              {error && <p className="col-span-2 text-red">{error}</p>}
+            </div>
+
+            <div className="flex justify-center items-center">
+              <button
+                className="bg-red text-white hover:text-true-black hover:bg-white p-3 rounded-lg"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Adding transaction..." : "Add Transaction"}
+              </button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
