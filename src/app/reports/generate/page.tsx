@@ -36,6 +36,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { reportTypes } from "@/lib/constants";
+import Image from "next/image";
+import {router} from "next/client";
 
 const formSchema = z
   .object({
@@ -82,6 +84,7 @@ const formSchema = z
 export default function Page() {
   const [portfolios, setPortfolios] = useState<IExtendedPortfolio[]>([]);
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatOptions = [
     { value: "pdf", label: "PDF" },
@@ -144,6 +147,7 @@ export default function Page() {
       console.log("Form values:", values);
 
       let selectedPortfolios: string[];
+      setIsSubmitting(true);
 
       if (requiresPortfolio && values.selectedPortfolio) {
         selectedPortfolios = [values.selectedPortfolio];
@@ -189,6 +193,7 @@ export default function Page() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("API error response:", errorData);
+        setIsSubmitting(false);
       }
 
       const blob = await response.blob();
@@ -208,9 +213,11 @@ export default function Page() {
       window.URL.revokeObjectURL(url);
 
       console.log("Report generated successfully:", fileName);
+      setIsSubmitting(false);
     } catch (error) {
       console.error("Error generating report:", error);
       alert(`Failed to generate report: ` + error);
+      setIsSubmitting(false);
     }
   };
 
@@ -225,6 +232,21 @@ export default function Page() {
       <div className="p-6 bg-true-black rounded-xl">
         <div className="w-[90%] mx-auto min-w-[600px] max-w-[1200px] bg-true-black">
           <Card className="bg-true-black no-border w-full">
+            <Button
+                variant="ghost"
+                size="icon"
+                className="flex self-start text-white hover:bg-gray-800 mt-6 mx-6"
+                aria-label="Go back to portfolio page"
+                onClick={() => router.push(`/reports`)}
+            >
+              <Image
+                  src="/white-arrow.svg"
+                  alt="Back Arrow"
+                  width={32}
+                  height={32}
+                  className="bg-black hover:bg-red rounded-md"
+              />
+            </Button>
             <CardHeader>
               <CardTitle className="text-2xl font-bold">
                 Generate Report
@@ -414,8 +436,9 @@ export default function Page() {
                     <Button
                         type="submit"
                         className="bg-red hover:bg-white hover:text-true-black text-white font-semibold p-3 rounded-lg"
+                        disabled={isSubmitting}
                     >
-                      Generate Report
+                      {isSubmitting ? "Generating..." : "Generate Report"}
                     </Button>
                   </div>
 

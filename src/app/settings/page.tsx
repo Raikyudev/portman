@@ -99,18 +99,18 @@ export default function SettingsPage() {
 
           <div className="md:col-span-5">
             <TabsContent value="portfolio">
-              <Card>
+              <Card className="bg-true-black">
                 <CardHeader>
                   <CardTitle>Portfolio Settings</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent >
                   <PortfolioSettingsList />
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="account">
-              <Card>
+              <Card className="bg-true-black">
                 <CardHeader>
                   <CardTitle>Account Settings</CardTitle>
                 </CardHeader>
@@ -163,6 +163,7 @@ export default function SettingsPage() {
                       <Button
                         variant="destructive"
                         onClick={() => setIsDeleteDialogOpen(true)}
+                        className="bg-red hover:bg-white hover:text-true-black"
                       >
                         Delete Account
                       </Button>

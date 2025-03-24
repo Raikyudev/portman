@@ -60,7 +60,7 @@ export default function PortfolioSettingsList() {
   };
 
   return (
-    <Card>
+    <Card className="bg-true-black no-border">
       <CardContent className="p-4">
         {loading && <div className="py-4">Loading portfolios...</div>}
         {!loading && portfolios.length === 0 && (
@@ -84,13 +84,24 @@ export default function PortfolioSettingsList() {
                       {new Date(portfolio.created_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteClick(portfolio._id)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex gap-4">
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteClick(portfolio._id)}
+                        className="bg-red hover:bg-white hover:text-true-black"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteClick(portfolio._id)}
+                        className="bg-red hover:bg-white hover:text-true-black"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
