@@ -98,17 +98,6 @@ export default function SettingsPage() {
           </TabsList>
 
           <div className="md:col-span-5">
-            <TabsContent value="portfolio">
-              <Card className="bg-true-black">
-                <CardHeader>
-                  <CardTitle>Portfolio Settings</CardTitle>
-                </CardHeader>
-                <CardContent >
-                  <PortfolioSettingsList />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
             <TabsContent value="account">
               <Card className="bg-true-black">
                 <CardHeader>
@@ -169,6 +158,16 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="portfolio">
+              <Card className="bg-true-black">
+                <CardHeader>
+                  <CardTitle>Portfolio Settings</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PortfolioSettingsList />
                 </CardContent>
               </Card>
             </TabsContent>

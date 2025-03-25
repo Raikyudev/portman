@@ -63,7 +63,6 @@ export async function POST(request: Request) {
 
     const overallResult: IPortfolioHistory[] = [];
 
-    // Collect all transactions for the user across all portfolios
     const allTransactions: IExtendedTransaction[] = [];
     for (const portfolio of portfolios) {
       const portfolioId = portfolio._id.toString();
@@ -80,7 +79,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Determine the effective start date (earliest transaction or fromDate)
     const earliestTransactionDate = new Date(
       Math.min(...allTransactions.map((tx) => new Date(tx.tx_date).getTime())),
     )
@@ -100,7 +98,6 @@ export async function POST(request: Request) {
       "days",
     );
 
-    // Initial fetch for all unique symbols across all portfolios
     const symbolEarliestDates = allTransactions.reduce(
       (acc, tx) => {
         const symbol = tx.asset_details.symbol;
@@ -141,7 +138,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Process each portfolio
     for (const portfolio of portfolios) {
       const portfolioId = portfolio._id.toString();
       console.log("Processing portfolio:", portfolioId);
@@ -194,7 +190,6 @@ export async function POST(request: Request) {
         {} as Record<string, string>,
       );
 
-      // Process dates sequentially to avoid race conditions
       for (const date of datesToCalculate) {
         console.log("Processing date for portfolio", portfolioId, ":", date);
         const holdingsForDate = await calculateStockHoldings(

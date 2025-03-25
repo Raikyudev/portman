@@ -1,9 +1,16 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Portfolio {
   _id: string;
@@ -15,6 +22,12 @@ interface Portfolio {
 export default function PortfolioSettingsList() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(
+    null,
+  );
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   useEffect(() => {
     async function fetchPortfolios() {
@@ -59,6 +72,48 @@ export default function PortfolioSettingsList() {
     }
   };
 
+  const handleEditClick = (portfolio: Portfolio) => {
+    setSelectedPortfolio(portfolio);
+    setEditName(portfolio.name);
+    setEditDescription(portfolio.description);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedPortfolio) return;
+
+    try {
+      const response = await fetch("/api/portfolio/edit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          portfolioId: selectedPortfolio._id,
+          name: editName,
+          description: editDescription,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPortfolios(
+          portfolios.map((portfolio) =>
+            portfolio._id === selectedPortfolio._id
+              ? { ...portfolio, name: editName, description: editDescription }
+              : portfolio,
+          ),
+        );
+        setIsEditDialogOpen(false);
+      } else {
+        console.error(data.error);
+      }
+    } catch (error) {
+      console.error("Error updating portfolio:", error);
+    }
+  };
+
   return (
     <Card className="bg-true-black no-border">
       <CardContent className="p-4">
@@ -86,18 +141,17 @@ export default function PortfolioSettingsList() {
                   </div>
                   <div className="flex gap-4">
                     <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteClick(portfolio._id)}
-                        className="bg-red hover:bg-white hover:text-true-black"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(portfolio)}
                     >
                       Edit
                     </Button>
                     <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteClick(portfolio._id)}
-                        className="bg-red hover:bg-white hover:text-true-black"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteClick(portfolio._id)}
+                      className="bg-red hover:bg-white hover:text-true-black"
                     >
                       Delete
                     </Button>
@@ -108,6 +162,43 @@ export default function PortfolioSettingsList() {
           </ScrollArea>
         )}
       </CardContent>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Portfolio</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Portfolio Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter portfolio name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Enter description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditSubmit}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
