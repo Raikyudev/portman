@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 type Holding = {
   name: string;
@@ -21,12 +23,14 @@ type Holding = {
 };
 
 type TopHoldingsProps = {
-  portfolioId?: string; // Optional portfolioId prop
+  portfolioId?: string;
 };
 
 export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
   const { data: session, status } = useSession();
+  const { preferredCurrency, isLoading, rates } = useCurrency();
   const [topHoldings, setTopHoldings] = useState<Holding[]>([]);
+  const [formattedValues, setFormattedValues] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +46,6 @@ export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
 
     const fetchTopHoldings = async () => {
       try {
-        // Construct the URL with optional portfolioId query parameter
         const url = portfolioId
           ? `/api/portfolio/top-holdings?portfolio_id=${portfolioId}`
           : "/api/portfolio/top-holdings";
@@ -64,6 +67,25 @@ export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
 
     fetchTopHoldings();
   }, [status, session, portfolioId]);
+
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading || topHoldings.length === 0) return;
+
+      const values = topHoldings.map((item) => item.value);
+      const formatted = await batchConvertAndFormatCurrency(
+        values,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      setFormattedValues(formatted);
+    };
+
+    updateCurrencyValues();
+  }, [topHoldings, preferredCurrency, isLoading, rates]);
 
   return (
     <Card className="bg-true-black">
@@ -89,7 +111,9 @@ export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.symbol}</TableCell>
                   <TableCell>{item.shares}</TableCell>
-                  <TableCell>${item.value.toLocaleString()}</TableCell>
+                  <TableCell>
+                    {formattedValues[index] || "Loading..."}
+                  </TableCell>
                   <TableCell>{item.percentage}%</TableCell>
                 </TableRow>
               ))

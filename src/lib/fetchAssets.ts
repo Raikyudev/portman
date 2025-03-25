@@ -1,7 +1,7 @@
 import Asset from "@/models/Asset";
 import { dbConnect, closeDatabase } from "@/lib/mongodb";
 import fetch from "node-fetch";
-import { getAllCurrencyRates } from "@/lib/currencyExchange";
+import { getServerExchangeRates } from "@/lib/currencyExchange";
 
 const FMP_API_KEY = process.env.FINANCIAL_API_KEY;
 if (!FMP_API_KEY) {
@@ -30,7 +30,7 @@ const exchangeCurrencyMap: { [key: string]: string } = {
   Shanghai: "CNY",
 };
 
-export default async function fetchAssets() {
+export default async function fetchAssets(request: Request) {
   await dbConnect();
 
   try {
@@ -51,13 +51,12 @@ export default async function fetchAssets() {
       (stock) => stock.exchangeShortName in exchangeCurrencyMap,
     );
 
-    // Preload all currency rates
-    console.log("Fetching all currency rates...");
-    const currencyRates = await getAllCurrencyRates();
+    console.log("Fetching all currency rates server-side...");
+    const currencyRates = await getServerExchangeRates(request);
     console.log(`Loaded ${currencyRates.size} currency rates.`);
 
     const logInterval = setInterval(() => {
-      console.log(`Processing... ${stocks.length} assets`);
+      console.log(`Processing... ${stocks.length} assets remaining`);
     }, 10_000);
 
     const bulkOps = await Promise.all(
@@ -65,7 +64,6 @@ export default async function fetchAssets() {
         const stockCurrency =
           exchangeCurrencyMap[stock.exchangeShortName] || "USD";
 
-        // Convert price to USD by dividing by the exchange rate (rate is foreign currency per USD)
         let convertedPrice = stock.price || 0;
         if (stockCurrency !== "USD") {
           const rate = currencyRates.get(stockCurrency.toUpperCase());
@@ -99,14 +97,14 @@ export default async function fetchAssets() {
 
     if (bulkOps.length > 0) {
       const result = await Asset.bulkWrite(bulkOps);
-      console.log("result: ", result);
+      console.log("Bulk write result: ", result);
     } else {
       console.log("No assets to update.");
     }
 
     clearInterval(logInterval);
   } catch (error) {
-    console.log("Error fetching assets list: " + error);
+    console.error("Error fetching assets list: " + error);
   }
 
   console.log("Finished fetching assets");

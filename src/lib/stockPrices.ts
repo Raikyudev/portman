@@ -1,6 +1,9 @@
 import yahooFinance from "yahoo-finance2";
 import { getDateRange } from "./utils";
-import { getAllCurrencyRates } from "@/lib/currencyExchange";
+import {
+  getAllCurrencyRates,
+  getServerExchangeRates,
+} from "@/lib/currencyExchange";
 
 interface PriceEntry {
   date: string;
@@ -24,6 +27,7 @@ export async function getStockPrices(
   holdings: Record<string, number>,
   startDate: string,
   endDate: string,
+  request: Request, // Add Request parameter
 ): Promise<Record<string, Record<string, number>>> {
   const stockPrices: Record<string, Record<string, number>> = {};
   const currentDate = new Date().toISOString().split("T")[0];
@@ -34,6 +38,9 @@ export async function getStockPrices(
   if (!holdings || Object.keys(holdings).length === 0) {
     return stockPrices;
   }
+
+  console.log("Fetching server-side currency rates...");
+  const currencyRates = await getServerExchangeRates(request);
 
   const symbols = Object.keys(holdings);
   console.log("Validating symbols:", symbols);
@@ -64,21 +71,30 @@ export async function getStockPrices(
   for (let i = 0; i < validSymbols.length; i++) {
     const symbol = validSymbols[i];
     const history = priceHistories[i];
+    const quote = await yahooFinance.quote(symbol); // Fetch currency info
+    const stockCurrency = quote.currency || "USD";
+    const rate = currencyRates.get(stockCurrency.toUpperCase()) || 1;
 
     for (const entry of history) {
       const date = entry.date;
       stockPrices[date] = stockPrices[date] || {};
       let price = entry.price;
 
+      // Convert to USD
+      price = stockCurrency !== "USD" ? price / rate : price;
+
       if (price === 0) {
         price = await fetchPriceForDay(
           symbol,
           date,
           getPriceMapFromHistory(priceHistories, i),
+          request,
         );
       }
       stockPrices[date][symbol] =
-        price > 0 ? price : await getClosestPreviousPrice(symbol, date);
+        price > 0
+          ? price
+          : await getClosestPreviousPrice(symbol, date, request);
     }
   }
 
@@ -86,7 +102,12 @@ export async function getStockPrices(
     if (!stockPrices[date]) {
       stockPrices[date] = {};
       for (const symbol of validSymbols) {
-        stockPrices[date][symbol] = await fetchPriceForDay(symbol, date);
+        stockPrices[date][symbol] = await fetchPriceForDay(
+          symbol,
+          date,
+          undefined,
+          request,
+        );
       }
     }
   }
@@ -165,6 +186,7 @@ async function fetchPriceForDay(
   symbol: string,
   currentDate: string,
   lastKnownPriceMap?: Record<string, { open: number; close: number }>,
+  request?: Request, // Add Request parameter
 ): Promise<number> {
   try {
     const period1 = new Date(currentDate);
@@ -177,27 +199,30 @@ async function fetchPriceForDay(
       return: "array",
     });
 
+    const currencyRates = request
+      ? await getServerExchangeRates(request)
+      : new Map();
+    const quote = await yahooFinance.quote(symbol);
+    const stockCurrency = quote.currency || "USD";
+    const rate = currencyRates.get(stockCurrency.toUpperCase()) || 1;
+
     if (result.quotes && result.quotes.length > 0) {
       const quote = result.quotes[0];
       const openPrice = quote.open || 0;
       const closePrice = quote.close || 0;
       const price = Math.max(openPrice, closePrice);
       if (price > 0) {
-        return price;
+        return stockCurrency !== "USD" ? price / rate : price;
       }
     }
 
-    return await getClosestPreviousPrice(
-      symbol,
-      currentDate,
-      lastKnownPriceMap,
-    );
+    return await getClosestPreviousPrice(symbol, currentDate, request);
   } catch (error) {
     console.error(
       `Error fetching price data for ${symbol} on ${currentDate}:`,
       error,
     );
-    return (await getClosestPreviousPrice(symbol, currentDate)) || 0;
+    return (await getClosestPreviousPrice(symbol, currentDate, request)) || 0;
   }
 }
 
@@ -274,6 +299,7 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
 export async function getClosestPreviousPrice(
   symbol: string,
   currentDate: string,
+  request?: Request, // Add Request parameter
   lastKnownPriceMap?: Record<string, { open: number; close: number }>,
 ): Promise<number> {
   if (lastKnownPriceMap) {
@@ -282,10 +308,14 @@ export async function getClosestPreviousPrice(
       .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
     const lastKnown = lastKnownEntries[0]?.[1];
     if (lastKnown && (lastKnown.open > 0 || lastKnown.close > 0)) {
-      console.log(
-        `Price for ${symbol} found in lastKnownPriceMap: ${Math.max(lastKnown.open, lastKnown.close)}`,
-      );
-      return Math.max(lastKnown.open, lastKnown.close);
+      const quote = await yahooFinance.quote(symbol);
+      const stockCurrency = quote.currency || "USD";
+      const currencyRates = request
+        ? await getServerExchangeRates(request)
+        : new Map();
+      const rate = currencyRates.get(stockCurrency.toUpperCase()) || 1;
+      const price = Math.max(lastKnown.open, lastKnown.close);
+      return stockCurrency !== "USD" ? price / rate : price; // Convert to USD
     }
   }
 
@@ -297,6 +327,13 @@ export async function getClosestPreviousPrice(
   const checkDate = new Date(currentDate);
   const maxLookbackDays = 30;
   let daysBack = 0;
+
+  const currencyRates = request
+    ? await getServerExchangeRates(request)
+    : new Map();
+  const quote = await yahooFinance.quote(symbol);
+  const stockCurrency = quote.currency || "USD";
+  const rate = currencyRates.get(stockCurrency.toUpperCase()) || 1;
 
   while (daysBack < maxLookbackDays) {
     checkDate.setDate(checkDate.getDate() - 1);
@@ -321,7 +358,7 @@ export async function getClosestPreviousPrice(
           console.log(
             `Found previous price for ${symbol} on ${dateStr}: ${price}`,
           );
-          return price;
+          return stockCurrency !== "USD" ? price / rate : price; // Convert to USD
         }
       }
       daysBack++;
@@ -351,29 +388,6 @@ export async function getClosestPreviousPrice(
   );
   return 0;
 }
-
-export async function getPriceChange(symbol: string): Promise<number> {
-  if (!(await isValidSymbol(symbol))) {
-    console.warn(`Invalid symbol ${symbol}, returning 0`);
-    return 0;
-  }
-
-  try {
-    const quote = await yahooFinance.quote(symbol);
-    if (quote.regularMarketChangePercent) {
-      return quote.regularMarketChangePercent;
-    } else {
-      console.warn(
-        `No regularMarketChangePercent available for ${symbol}, returning 0`,
-      );
-      return 0;
-    }
-  } catch (error) {
-    console.error(`Error fetching price change for ${symbol}:`, error);
-    return 0;
-  }
-}
-
 function adjustDateToValidRange(dateStr: string, currentDate: string): string {
   const date = new Date(dateStr);
   const today = new Date(currentDate);
@@ -496,5 +510,26 @@ export async function getAssetDetailsData(
       trailingPE: 0,
       trailingAnnualDividendYield: 0,
     };
+  }
+}
+export async function getPriceChange(symbol: string): Promise<number> {
+  if (!(await isValidSymbol(symbol))) {
+    console.warn(`Invalid symbol ${symbol}, returning 0`);
+    return 0;
+  }
+
+  try {
+    const quote = await yahooFinance.quote(symbol);
+    if (quote.regularMarketChangePercent) {
+      return quote.regularMarketChangePercent;
+    } else {
+      console.warn(
+        `No regularMarketChangePercent available for ${symbol}, returning 0`,
+      );
+      return 0;
+    }
+  } catch (error) {
+    console.error(`Error fetching price change for ${symbol}:`, error);
+    return 0;
   }
 }

@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import PopoutWindow from "./PopoutWindow"; // Adjust path as needed
-import AllTransactions from "./AllTransactions"; // Adjust path as needed
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Import ScrollArea
+import PopoutWindow from "./PopoutWindow";
+import AllTransactions from "./AllTransactions";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface Transaction {
   date: string;
@@ -25,7 +27,7 @@ interface Transaction {
 }
 
 interface RecentTransactionsProps {
-  portfolioId?: string; // Optional portfolioId prop
+  portfolioId?: string;
 }
 
 export default function RecentTransactions({
@@ -35,6 +37,10 @@ export default function RecentTransactions({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
+  const { preferredCurrency, isLoading, rates } = useCurrency();
+  const [formattedPrices, setFormattedPrices] = useState<
+    Record<string, { price: string; total: string }>
+  >({});
 
   useEffect(() => {
     const fetchRecentTransactions = async () => {
@@ -80,6 +86,44 @@ export default function RecentTransactions({
     fetchRecentTransactions();
   }, [portfolioId]);
 
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading) return;
+
+      const prices = transactions.map((t) => t.price);
+      const totals = transactions.map((t) => t.total);
+
+      const formattedPricesArray = await batchConvertAndFormatCurrency(
+        prices,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+      const formattedTotalsArray = await batchConvertAndFormatCurrency(
+        totals,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      const newFormattedValues: Record<
+        string,
+        { price: string; total: string }
+      > = {};
+      transactions.forEach((_, index) => {
+        newFormattedValues[index] = {
+          price: formattedPricesArray[index],
+          total: formattedTotalsArray[index],
+        };
+      });
+      setFormattedPrices(newFormattedValues);
+    };
+
+    updateCurrencyValues();
+  }, [transactions, preferredCurrency, isLoading, rates]);
+
   const openPopout = () => {
     setIsPopoutOpen(true);
   };
@@ -92,17 +136,20 @@ export default function RecentTransactions({
     <Card className="no-border bg-true-black">
       <CardHeader className="flex flex-row items-center justify-between pt-6 space-y-0 no-border">
         <CardTitle>Recent Transactions</CardTitle>
-        <Button onClick={openPopout} className="bg-red text-white hover:text-true-black" size="sm">
+        <Button
+          onClick={openPopout}
+          className="bg-red text-white hover:text-true-black"
+          size="sm"
+        >
           View All Transactions
         </Button>
       </CardHeader>
       <CardContent className="h-auto">
         {error && <div className="text-red mb-4">{error}</div>}
-        {loading ? (
+        {loading || isLoading ? (
           <p>Loading transactions...</p>
         ) : (
           <ScrollArea className="h-[28vh] w-full overflow-x-auto no-border overflow-x-auto whitespace-nowrap">
-            {" "}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -122,8 +169,14 @@ export default function RecentTransactions({
                       <TableCell>{item.symbol}</TableCell>
                       <TableCell>{item.type}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
-                      <TableCell>${item.price.toLocaleString()}</TableCell>
-                      <TableCell>${item.total.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {formattedPrices[index]?.price ||
+                          item.price.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {formattedPrices[index]?.total ||
+                          item.total.toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (

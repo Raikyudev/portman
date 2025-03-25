@@ -1,4 +1,4 @@
-// src/components/PortfolioDropdown.tsx
+"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { IExtendedPortfolio } from "@/types/portfolio";
 import AddPortfolioPopover from "./AddPortfolioPopover";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface PortfolioDropdownProps {
   portfolios: IExtendedPortfolio[];
@@ -24,12 +26,12 @@ export default function PortfolioDropdown({
   initialPortfolioId,
   create = true,
 }: PortfolioDropdownProps) {
-  // Local state to manage the selected portfolio
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
     null,
   );
+  const { preferredCurrency, isLoading, rates } = useCurrency();
+  const [formattedValues, setFormattedValues] = useState<string[]>([]);
 
-  // Sync with initialPortfolioId on mount or when it changes
   useEffect(() => {
     if (
       initialPortfolioId &&
@@ -43,13 +45,33 @@ export default function PortfolioDropdown({
     }
   }, [initialPortfolioId, portfolios]);
 
-  // Handle portfolio selection
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading || portfolios.length === 0) return;
+
+      const values = portfolios.map(
+        (portfolio) => portfolio.port_total_value || 0,
+      );
+
+      const formatted = await batchConvertAndFormatCurrency(
+        values,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      setFormattedValues(formatted);
+    };
+
+    updateCurrencyValues();
+  }, [portfolios, preferredCurrency, isLoading, rates]);
+
   const handleSelect = (portfolioId: string) => {
     setSelectedPortfolioId(portfolioId);
     onPortfolioSelect(portfolioId);
   };
 
-  // Fallback display if no portfolio is selected
   const displayName = selectedPortfolioId
     ? portfolios.find((p) => p._id.toString() === selectedPortfolioId)?.name ||
       "Portfolio Name"
@@ -82,7 +104,7 @@ export default function PortfolioDropdown({
         </div>
         <div className="max-h-48 overflow-y-auto">
           {portfolios.length > 0 ? (
-            portfolios.map((portfolio) => (
+            portfolios.map((portfolio, index) => (
               <DropdownMenuItem
                 key={portfolio._id.toString()}
                 onClick={() => handleSelect(portfolio._id.toString())}
@@ -96,7 +118,9 @@ export default function PortfolioDropdown({
                   <div className="flex justify-between w-full">
                     <span>{portfolio.name || "Portfolio Name"}</span>
                     <span>
-                      ${portfolio.port_total_value?.toLocaleString() || "0"}
+                      {formattedValues[index] ||
+                        portfolio.port_total_value?.toLocaleString() ||
+                        "0"}
                     </span>
                   </div>
                 ) : (

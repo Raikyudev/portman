@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import fetchAssets from "@/lib/fetchAssets";
 import { dbConnect, closeDatabase } from "@/lib/mongodb";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    await fetchAssets();
     await dbConnect();
+    await fetchAssets(request);
 
     await closeDatabase();
     return NextResponse.json(

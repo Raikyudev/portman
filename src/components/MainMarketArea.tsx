@@ -17,12 +17,12 @@ import {
   PaginationLink,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
-import WhiteFilledStar from "../../public/white-filled-star.svg";
-import Image from "next/image";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AssetDetails from "@/components/AssetDetails";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface MainMarketAreaProps {
   assets: IExtendedAsset[];
@@ -50,6 +50,8 @@ export default function MainMarketArea({
   onToggleWatchlist,
 }: MainMarketAreaProps) {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [formattedPrices, setFormattedPrices] = useState<string[]>([]);
+  const { preferredCurrency, isLoading, rates } = useCurrency();
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -67,8 +69,8 @@ export default function MainMarketArea({
 
   const renderPaginationItems = () => {
     const items = [];
-    const startPage = Math.max(1, currentPage - 1); // One page before current
-    const endPage = Math.min(totalPages, currentPage + 1); // One page after current
+    const startPage = Math.max(1, currentPage - 1);
+    const endPage = Math.min(totalPages, currentPage + 1);
 
     items.push(
       <PaginationItem key="previous">
@@ -127,6 +129,26 @@ export default function MainMarketArea({
     return items;
   };
 
+  useEffect(() => {
+    if (isLoading || assets.length === 0) return;
+
+    const updatePrices = async () => {
+      const prices = assets.map((asset) => asset.price);
+
+      const formatted = await batchConvertAndFormatCurrency(
+        prices,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      setFormattedPrices(formatted);
+    };
+
+    updatePrices();
+  }, [assets, preferredCurrency, isLoading, rates]);
+
   return (
     <Card className="h-[82vh] bg-true-black flex flex-col">
       {selectedAssetId ? (
@@ -142,16 +164,6 @@ export default function MainMarketArea({
             <div className="flex flex-col sm:flex-row justify-center lg:justify-end gap-4 p-4 w-full lg:w-auto">
               <div className="bg-black p-4 text-gray text-sm rounded-lg font-semibold">
                 Choose an asset to see more details
-              </div>
-              <div className="flex items-center gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
-                <Image
-                  src={WhiteFilledStar}
-                  alt="White star icon"
-                  width={18}
-                  height={18}
-                  className="w-5 h-5"
-                />{" "}
-                to add to the watchlist
               </div>
             </div>
 
@@ -184,7 +196,7 @@ export default function MainMarketArea({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {assets.map((asset) => (
+                    {assets.map((asset, index) => (
                       <TableRow
                         key={asset._id.toString()}
                         onClick={() => handleRowClick(asset._id.toString())}
@@ -192,7 +204,10 @@ export default function MainMarketArea({
                       >
                         <TableCell>{asset.symbol}</TableCell>
                         <TableCell>{asset.name}</TableCell>
-                        <TableCell>${asset.price.toFixed(2)}</TableCell>
+                        <TableCell>
+                          {formattedPrices[index] ||
+                            `$${asset.price.toFixed(2)}`}
+                        </TableCell>
                         <TableCell>{asset.change.toFixed(2)}%</TableCell>
                         <TableCell>
                           <WatchlistButton

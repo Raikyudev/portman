@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { generatePDF } from "@/lib/reportUtils";
-import { createGenerationInputs } from "@/lib/createGenerationInputs"; // Import the new function
+import { createGenerationInputs } from "@/lib/createGenerationInputs";
 import Report from "@/models/Report";
 import { dbConnect } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { reportTypes } from "@/lib/constants";
+import { getServerExchangeRates } from "@/lib/currencyExchange";
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +35,6 @@ export async function POST(request: Request) {
       name,
     });
 
-    // Validate required fields
     if (!reportType || !format || !dateRange?.to || !name) {
       console.error("Validation failed: Missing required fields");
       return NextResponse.json(
@@ -54,7 +54,6 @@ export async function POST(request: Request) {
     const toDateObj: Date = new Date(dateRange.to);
     let fromDateObj: Date | undefined;
 
-    // For summary report, set fromDate to one year prior to toDate
     if (reportType === "summary") {
       fromDateObj = new Date(toDateObj);
       fromDateObj.setFullYear(toDateObj.getFullYear() - 1);
@@ -106,13 +105,19 @@ export async function POST(request: Request) {
       }
     });
 
-    // Generate the full generation inputs
     const generationInputs = await createGenerationInputs({
       portfolio_ids: portfolioIds,
       report_type: reportType,
       from_date: fromDateObj,
       to_date: toDateObj,
     });
+
+    const preferredCurrency =
+      (session.user as any).preferences?.currency || "USD";
+    console.log("User's preferred currency:", preferredCurrency);
+
+    console.log("Fetching server-side currency rates...");
+    const currencyRates = await getServerExchangeRates(request);
 
     console.log("Generating report file...");
     const fileName = `${name}.${format}`;
@@ -128,7 +133,13 @@ export async function POST(request: Request) {
       case "pdf":
       default:
         console.log("Generating PDF report...");
-        fileBuffer = await generatePDF(generationInputs, session.user.first_name, session.user.last_name);
+        fileBuffer = await generatePDF(
+          generationInputs,
+          session.user.first_name || "User",
+          session.user.last_name || "",
+          preferredCurrency,
+          currencyRates, // Pass the pre-fetched rates
+        );
         mimeType = "application/pdf";
         break;
     }

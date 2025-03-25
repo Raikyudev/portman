@@ -2,21 +2,44 @@ import puppeteer from "puppeteer";
 import { format } from "date-fns";
 import { PortfolioData } from "@/types/portfolio";
 import {
-    getAIPredictions,
-    getAIRecommendations,
-    AIPrediction,
+  getAIPredictions,
+  getAIRecommendations,
+  AIPrediction,
 } from "@/lib/AIUtils";
 import { getTodayPriceBySymbol } from "@/lib/stockPrices";
+import { CURRENCY_SYMBOLS } from "@/lib/constants";
 
-export async function generatePDF(data: PortfolioData, first_name: string, last_name: string): Promise<Buffer> {
-    try {
-        const isSummaryReport = data.reportType === "summary";
-        const formattedToDate = format(new Date(data.toDate), "dd-MM-yyyy");
-        const formattedFromDate = data.fromDate
-            ? format(new Date(data.fromDate), "dd-MM-yyyy")
-            : null;
+async function convertAndFormatValue(
+  value: number,
+  preferredCurrency: string,
+  rates: Map<string, number>,
+): Promise<string> {
+  const rate = rates.get(preferredCurrency.toUpperCase()) || 1;
+  const convertedValue = value * rate;
+  const symbol =
+    CURRENCY_SYMBOLS[preferredCurrency.toUpperCase()] || preferredCurrency;
+  return `${symbol}${convertedValue.toFixed(2)}`;
+}
 
-        let htmlContent = `
+export async function generatePDF(
+  data: PortfolioData,
+  first_name: string,
+  last_name: string,
+  preferredCurrency: string,
+  rates: Map<string, number>, // Add optional rates parameter
+): Promise<Buffer> {
+  try {
+    const isSummaryReport = data.reportType === "summary";
+    const formattedToDate = format(new Date(data.toDate), "dd-MM-yyyy");
+    const formattedFromDate = data.fromDate
+      ? format(new Date(data.fromDate), "dd-MM-yyyy")
+      : null;
+
+    const currencyRates = rates;
+    const currencySymbol =
+      CURRENCY_SYMBOLS[preferredCurrency.toUpperCase()] || preferredCurrency;
+
+    let htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -89,46 +112,52 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
         <div class="top-bar-underline"></div>
 
         <h1>${
-            data.reportType === "income_report"
-                ? "Income Report"
-                : data.reportType === "portfolio_report"
-                    ? "Portfolio Report"
-                    : data.reportType === "summary"
-                        ? "Summary Report"
-                        : data.reportType === "ai_portfolio_summary"
-                            ? "AI Portfolio Summary"
-                            : "AI Account Summary"
+          data.reportType === "income_report"
+            ? "Income Report"
+            : data.reportType === "portfolio_report"
+              ? "Portfolio Report"
+              : data.reportType === "summary"
+                ? "Summary Report"
+                : data.reportType === "ai_portfolio_summary"
+                  ? "AI Portfolio Summary"
+                  : "AI Account Summary"
         }</h1>
         <p class="subheader">Name: ${first_name} ${last_name}</p>
         <p class="subheader">Report Date: ${formattedToDate}</p>
+        <p class="subheader">Currency: ${preferredCurrency.toUpperCase()}</p>
     `;
 
-        switch (data.reportType) {
-            case "income_report":
-                htmlContent += `
+    switch (data.reportType) {
+      case "income_report":
+        htmlContent += `
           <div>
             <h2 class="section-header">Income Overview *</h2>
             <p>Income Report: Listing stock values over time.</p>
-            ${data.portfolios
-                    .map((portfolio) => {
-                        const portfolioId = portfolio._id;
-                        const holdings = data.portfolioHoldings[portfolioId] || {
-                            stockHoldingsFrom: {},
-                            stockHoldingsTo: {},
-                            portfolioValueFrom: 0,
-                            portfolioValueTo: 0,
-                            periodProfits: {},
-                        };
-                        const allTickers = Array.from(
-                            new Set([
-                                ...Object.keys(holdings.stockHoldingsFrom),
-                                ...Object.keys(holdings.stockHoldingsTo),
-                            ]),
-                        );
-                        const totalPeriodProfit = Object.values(
-                            holdings.periodProfits || {},
-                        ).reduce((sum, profit) => sum + (profit || 0), 0);
-                        return `
+            ${await Promise.all(
+              data.portfolios.map(async (portfolio) => {
+                const portfolioId = portfolio._id;
+                const holdings = data.portfolioHoldings[portfolioId] || {
+                  stockHoldingsFrom: {},
+                  stockHoldingsTo: {},
+                  portfolioValueFrom: 0,
+                  portfolioValueTo: 0,
+                  periodProfits: {},
+                };
+                const allTickers = Array.from(
+                  new Set([
+                    ...Object.keys(holdings.stockHoldingsFrom),
+                    ...Object.keys(holdings.stockHoldingsTo),
+                  ]),
+                );
+                const totalPeriodProfit = Object.values(
+                  holdings.periodProfits || {},
+                ).reduce((sum, profit) => sum + (profit || 0), 0);
+                const formattedTotalProfit = await convertAndFormatValue(
+                  totalPeriodProfit,
+                  preferredCurrency,
+                  currencyRates,
+                );
+                return `
                   <div>
                     <h3 class="portfolio-header">${portfolio.name}</h3>
                     <table>
@@ -139,85 +168,97 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
                           <th>Value From (${formattedFromDate || "N/A"})</th>
                           <th>Shares (${formattedToDate})</th>
                           <th>Value To (${formattedToDate})</th>
-                          <th>Profit Over Period ($)</th>
+                          <th>Profit Over Period (${currencySymbol})</th>
                         </tr>
                       </thead>
                       <tbody>
-                        ${allTickers
-                            .map((ticker) => {
-                                const fromHolding = holdings.stockHoldingsFrom[
-                                    ticker
-                                    ] || {
-                                    quantity: 0,
-                                    value: 0,
-                                };
-                                const toHolding = holdings.stockHoldingsTo[
-                                    ticker
-                                    ] || {
-                                    quantity: 0,
-                                    value: 0,
-                                };
-                                const periodProfit =
-                                    holdings.periodProfits?.[ticker] || 0;
-                                const periodProfitClass =
-                                    periodProfit >= 0
-                                        ? "profit-positive"
-                                        : "profit-negative";
-                                return `
+                        ${await Promise.all(
+                          allTickers.map(async (ticker) => {
+                            const fromHolding = holdings.stockHoldingsFrom[
+                              ticker
+                            ] || {
+                              quantity: 0,
+                              value: 0,
+                            };
+                            const toHolding = holdings.stockHoldingsTo[
+                              ticker
+                            ] || {
+                              quantity: 0,
+                              value: 0,
+                            };
+                            const periodProfit =
+                              holdings.periodProfits?.[ticker] || 0;
+                            const periodProfitClass =
+                              periodProfit >= 0
+                                ? "profit-positive"
+                                : "profit-negative";
+                            const formattedFromValue =
+                              await convertAndFormatValue(
+                                fromHolding.value,
+                                preferredCurrency,
+                                currencyRates,
+                              );
+                            const formattedToValue =
+                              await convertAndFormatValue(
+                                toHolding.value,
+                                preferredCurrency,
+                                currencyRates,
+                              );
+                            const formattedPeriodProfit =
+                              await convertAndFormatValue(
+                                periodProfit,
+                                preferredCurrency,
+                                currencyRates,
+                              );
+                            return `
                               <tr>
                                 <td>${ticker}</td>
                                 <td>${fromHolding.quantity}</td>
-                                <td>$${fromHolding.value.toFixed(2)}</td>
+                                <td>${formattedFromValue}</td>
                                 <td>${toHolding.quantity}</td>
-                                <td>$${toHolding.value.toFixed(2)}</td>
-                                <td class="${periodProfitClass}">$${periodProfit.toFixed(
-                                    2,
-                                )}</td>
+                                <td>${formattedToValue}</td>
+                                <td class="${periodProfitClass}">${formattedPeriodProfit}</td>
                               </tr>
                             `;
-                            })
-                            .join("")}
+                          }),
+                        ).then((rows) => rows.join(""))}
                       </tbody>
                     </table>
                     <p>Total Profit Over Period for ${
-                            portfolio.name
-                        }: <span class="${
-                            totalPeriodProfit >= 0
-                                ? "profit-positive"
-                                : "profit-negative"
-                        }">$${totalPeriodProfit.toFixed(2)}</span></p>
+                      portfolio.name
+                    }: <span class="${
+                      totalPeriodProfit >= 0
+                        ? "profit-positive"
+                        : "profit-negative"
+                    }">${formattedTotalProfit}</span></p>
                   </div>
                 `;
-                    })
-                    .join("")}
+              }),
+            ).then((sections) => sections.join(""))}
           </div>
         `;
-                break;
+        break;
 
-            case "portfolio_report":
-                htmlContent += `
+      case "portfolio_report":
+        htmlContent += `
           <div>
-            ${data.portfolios
-                    .map((portfolio) => {
-                        const portfolioId = portfolio._id;
-                        const holdings = data.portfolioHoldings[portfolioId] || {
-                            stockHoldingsFrom: {},
-                            stockHoldingsTo: {},
-                            portfolioValueFrom: 0,
-                            portfolioValueTo: 0,
-                            periodProfits: {},
-                        };
-                        const allTickers = Array.from(
-                            new Set([
-                                ...Object.keys(holdings.stockHoldingsFrom),
-                                ...Object.keys(holdings.stockHoldingsTo),
-                            ]),
-                        );
-                        Object.values(holdings.periodProfits || {}).reduce(
-                            (sum, profit) => sum + (profit || 0),
-                            0,
-                        );
-                        return `
+            ${await Promise.all(
+              data.portfolios.map(async (portfolio) => {
+                const portfolioId = portfolio._id;
+                const holdings = data.portfolioHoldings[portfolioId] || {
+                  stockHoldingsFrom: {},
+                  stockHoldingsTo: {},
+                  portfolioValueFrom: 0,
+                  portfolioValueTo: 0,
+                  periodProfits: {},
+                };
+                const allTickers = Array.from(
+                  new Set([
+                    ...Object.keys(holdings.stockHoldingsFrom),
+                    ...Object.keys(holdings.stockHoldingsTo),
+                  ]),
+                );
+                return `
                   <div>
                     <h3 class="portfolio-header">${portfolio.name}</h3>
                     <table>
@@ -226,68 +267,82 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
                           <th>Stock Name</th>
                           ${
                             isSummaryReport
-                                ? ""
-                                : `<th>Shares (${formattedFromDate})</th><th>Value (${formattedFromDate})</th>`
-                        }
+                              ? ""
+                              : `<th>Shares (${formattedFromDate})</th><th>Value (${formattedFromDate})</th>`
+                          }
                           <th>Shares (${formattedToDate})</th>
                           <th>Value (${formattedToDate})</th>
                           ${
                             formattedFromDate
-                                ? `<th>Profit Over Period ($)</th>`
-                                : ""
-                        }
+                              ? `<th>Profit Over Period (${currencySymbol})</th>`
+                              : ""
+                          }
                         </tr>
                       </thead>
                       <tbody>
-                        ${allTickers
-                            .map((ticker) => {
-                                const fromHolding = holdings.stockHoldingsFrom[
-                                    ticker
-                                    ] || {
-                                    quantity: 0,
-                                    value: 0,
-                                };
-                                const toHolding = holdings.stockHoldingsTo[
-                                    ticker
-                                    ] || {
-                                    quantity: 0,
-                                    value: 0,
-                                };
-                                const periodProfit =
-                                    holdings.periodProfits?.[ticker] || 0;
-                                const periodProfitClass =
-                                    periodProfit >= 0
-                                        ? "profit-positive"
-                                        : "profit-negative";
-                                return `
+                        ${await Promise.all(
+                          allTickers.map(async (ticker) => {
+                            const fromHolding = holdings.stockHoldingsFrom[
+                              ticker
+                            ] || {
+                              quantity: 0,
+                              value: 0,
+                            };
+                            const toHolding = holdings.stockHoldingsTo[
+                              ticker
+                            ] || {
+                              quantity: 0,
+                              value: 0,
+                            };
+                            const periodProfit =
+                              holdings.periodProfits?.[ticker] || 0;
+                            const periodProfitClass =
+                              periodProfit >= 0
+                                ? "profit-positive"
+                                : "profit-negative";
+                            const formattedFromValue =
+                              await convertAndFormatValue(
+                                fromHolding.value,
+                                preferredCurrency,
+                                currencyRates,
+                              );
+                            const formattedToValue =
+                              await convertAndFormatValue(
+                                toHolding.value,
+                                preferredCurrency,
+                                currencyRates,
+                              );
+                            const formattedPeriodProfit =
+                              await convertAndFormatValue(
+                                periodProfit,
+                                preferredCurrency,
+                                currencyRates,
+                              );
+                            return `
                               <tr>
                                 <td>${ticker}</td>
                                 ${
-                                    !isSummaryReport
-                                        ? `<td>${fromHolding.quantity}</td><td>$${fromHolding.value.toFixed(
-                                            2,
-                                        )}</td>`
-                                        : ""
+                                  !isSummaryReport
+                                    ? `<td>${fromHolding.quantity}</td><td>${formattedFromValue}</td>`
+                                    : ""
                                 }
                                 <td>${toHolding.quantity}</td>
-                                <td>$${toHolding.value.toFixed(2)}</td>
+                                <td>${formattedToValue}</td>
                                 ${
-                                    formattedFromDate
-                                        ? `<td class="${periodProfitClass}">$${periodProfit.toFixed(
-                                            2,
-                                        )}</td>`
-                                        : ""
+                                  formattedFromDate
+                                    ? `<td class="${periodProfitClass}">${formattedPeriodProfit}</td>`
+                                    : ""
                                 }
                               </tr>
                             `;
-                            })
-                            .join("")}
+                          }),
+                        ).then((rows) => rows.join(""))}
                       </tbody>
                     </table>
                   </div>
                 `;
-                    })
-                    .join("")}
+              }),
+            ).then((sections) => sections.join(""))}
             <div>
               <h2 class="section-header">Portfolio Value</h2>
               <table>
@@ -295,245 +350,275 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
                   <tr>
                     <th>Description</th>
                     ${
-                    isSummaryReport
-                        ? `<th>Value (${formattedToDate})</th><th>Total Profit Over Period ($)</th>`
-                        : `<th>Value (${formattedFromDate})</th><th>Value (${formattedToDate})</th><th>Total Profit Over Period ($)</th>`
-                }
+                      isSummaryReport
+                        ? `<th>Value (${formattedToDate})</th><th>Total Profit Over Period (${currencySymbol})</th>`
+                        : `<th>Value (${formattedFromDate})</th><th>Value (${formattedToDate})</th><th>Total Profit Over Period (${currencySymbol})</th>`
+                    }
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     <td>Total Portfolio Value</td>
                     ${
-                    isSummaryReport
+                      isSummaryReport
                         ? `
-                          <td>$${Object.values(data.portfolioHoldings)
-                            .reduce(
-                                (sum, holding) => sum + holding.portfolioValueTo,
-                                0,
-                            )
-                            .toFixed(2)}</td>
+                          <td>${await convertAndFormatValue(
+                            Object.values(data.portfolioHoldings).reduce(
+                              (sum, holding) => sum + holding.portfolioValueTo,
+                              0,
+                            ),
+                            preferredCurrency,
+                            currencyRates,
+                          )}</td>
                           <td class="${
                             Object.values(data.portfolioHoldings).reduce(
-                                (sum, holding) =>
-                                    sum +
-                                    Object.values(
-                                        holding.periodProfits || {},
-                                    ).reduce(
-                                        (pSum, profit) => pSum + (profit || 0),
-                                        0,
-                                    ),
-                                0,
+                              (sum, holding) =>
+                                sum +
+                                Object.values(
+                                  holding.periodProfits || {},
+                                ).reduce(
+                                  (pSum, profit) => pSum + (profit || 0),
+                                  0,
+                                ),
+                              0,
                             ) >= 0
-                                ? "profit-positive"
-                                : "profit-negative"
-                        }">$${Object.values(data.portfolioHoldings)
-                            .reduce(
-                                (sum, holding) =>
-                                    sum +
-                                    Object.values(
-                                        holding.periodProfits || {},
-                                    ).reduce(
-                                        (pSum, profit) => pSum + (profit || 0),
-                                        0,
-                                    ),
-                                0,
-                            )
-                            .toFixed(2)}</td>
+                              ? "profit-positive"
+                              : "profit-negative"
+                          }">${await convertAndFormatValue(
+                            Object.values(data.portfolioHoldings).reduce(
+                              (sum, holding) =>
+                                sum +
+                                Object.values(
+                                  holding.periodProfits || {},
+                                ).reduce(
+                                  (pSum, profit) => pSum + (profit || 0),
+                                  0,
+                                ),
+                              0,
+                            ),
+                            preferredCurrency,
+                            currencyRates,
+                          )}</td>
                         `
                         : `
-                          <td>$${Object.values(data.portfolioHoldings)
-                            .reduce(
-                                (sum, holding) =>
-                                    sum + holding.portfolioValueFrom,
-                                0,
-                            )
-                            .toFixed(2)}</td>
-                          <td>$${Object.values(data.portfolioHoldings)
-                            .reduce(
-                                (sum, holding) => sum + holding.portfolioValueTo,
-                                0,
-                            )
-                            .toFixed(2)}</td>
+                          <td>${await convertAndFormatValue(
+                            Object.values(data.portfolioHoldings).reduce(
+                              (sum, holding) =>
+                                sum + holding.portfolioValueFrom,
+                              0,
+                            ),
+                            preferredCurrency,
+                            currencyRates,
+                          )}</td>
+                          <td>${await convertAndFormatValue(
+                            Object.values(data.portfolioHoldings).reduce(
+                              (sum, holding) => sum + holding.portfolioValueTo,
+                              0,
+                            ),
+                            preferredCurrency,
+                            currencyRates,
+                          )}</td>
                           <td class="${
                             Object.values(data.portfolioHoldings).reduce(
-                                (sum, holding) =>
-                                    sum +
-                                    Object.values(
-                                        holding.periodProfits || {},
-                                    ).reduce(
-                                        (pSum, profit) => pSum + (profit || 0),
-                                        0,
-                                    ),
-                                0,
+                              (sum, holding) =>
+                                sum +
+                                Object.values(
+                                  holding.periodProfits || {},
+                                ).reduce(
+                                  (pSum, profit) => pSum + (profit || 0),
+                                  0,
+                                ),
+                              0,
                             ) >= 0
-                                ? "profit-positive"
-                                : "profit-negative"
-                        }">$${Object.values(data.portfolioHoldings)
-                            .reduce(
-                                (sum, holding) =>
-                                    sum +
-                                    Object.values(
-                                        holding.periodProfits || {},
-                                    ).reduce(
-                                        (pSum, profit) => pSum + (profit || 0),
-                                        0,
-                                    ),
-                                0,
-                            )
-                            .toFixed(2)}</td>
+                              ? "profit-positive"
+                              : "profit-negative"
+                          }">${await convertAndFormatValue(
+                            Object.values(data.portfolioHoldings).reduce(
+                              (sum, holding) =>
+                                sum +
+                                Object.values(
+                                  holding.periodProfits || {},
+                                ).reduce(
+                                  (pSum, profit) => pSum + (profit || 0),
+                                  0,
+                                ),
+                              0,
+                            ),
+                            preferredCurrency,
+                            currencyRates,
+                          )}</td>
                         `
-                }
+                    }
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
         `;
-                break;
+        break;
 
-            case "summary":
-                htmlContent += `
+      case "summary":
+        htmlContent += `
           <div>
             <h2 class="section-header">Portfolio Summary as of ${formattedToDate} *</h2>
             <p>Summary of portfolio values and profits over the last year (${
-                    formattedFromDate || "N/A"
-                } to ${formattedToDate}).</p>
+              formattedFromDate || "N/A"
+            } to ${formattedToDate}).</p>
             <table>
               <thead>
                 <tr>
                   <th>Portfolio Name</th>
                   <th>Description</th>
-                  <th>Value as of ${formattedToDate} ($)</th>
+                  <th>Value as of ${formattedToDate} (${currencySymbol})</th>
                   ${
                     formattedFromDate
-                        ? `<th>Profit Over Last Year ($)</th>`
-                        : ""
-                }
+                      ? `<th>Profit Over Last Year (${currencySymbol})</th>`
+                      : ""
+                  }
                 </tr>
               </thead>
               <tbody>
-                ${data.portfolios
-                    .map((portfolio) => {
-                        const portfolioId = portfolio._id;
-                        const holdings = data.portfolioHoldings[portfolioId] || {
-                            stockHoldingsFrom: {},
-                            stockHoldingsTo: {},
-                            portfolioValueFrom: 0,
-                            portfolioValueTo: 0,
-                            periodProfits: {},
-                        };
-                        const totalPeriodProfit = Object.values(
-                            holdings.periodProfits || {},
-                        ).reduce((sum, profit) => sum + (profit || 0), 0);
-                        return `
+                ${await Promise.all(
+                  data.portfolios.map(async (portfolio) => {
+                    const portfolioId = portfolio._id;
+                    const holdings = data.portfolioHoldings[portfolioId] || {
+                      stockHoldingsFrom: {},
+                      stockHoldingsTo: {},
+                      portfolioValueFrom: 0,
+                      portfolioValueTo: 0,
+                      periodProfits: {},
+                    };
+                    const totalPeriodProfit = Object.values(
+                      holdings.periodProfits || {},
+                    ).reduce((sum, profit) => sum + (profit || 0), 0);
+                    const formattedPortfolioValue = await convertAndFormatValue(
+                      holdings.portfolioValueTo,
+                      preferredCurrency,
+                      currencyRates,
+                    );
+                    const formattedTotalProfit = await convertAndFormatValue(
+                      totalPeriodProfit,
+                      preferredCurrency,
+                      currencyRates,
+                    );
+                    return `
                       <tr>
                         <td>${portfolio.name}</td>
                         <td>${portfolio.description ? `${portfolio.description}` : "N/A"}</td>
-                        <td>$${holdings.portfolioValueTo.toFixed(2)}</td>
+                        <td>${formattedPortfolioValue}</td>
                         ${
-                            formattedFromDate
-                                ? `<td class="${
-                                    totalPeriodProfit >= 0
-                                        ? "profit-positive"
-                                        : "profit-negative"
-                                }">$${totalPeriodProfit.toFixed(2)}</td>`
-                                : ""
+                          formattedFromDate
+                            ? `<td class="${
+                                totalPeriodProfit >= 0
+                                  ? "profit-positive"
+                                  : "profit-negative"
+                              }">${formattedTotalProfit}</td>`
+                            : ""
                         }
                       </tr>
                     `;
-                    })
-                    .join("")}
+                  }),
+                ).then((rows) => rows.join(""))}
               </tbody>
             </table>
           </div>
         `;
-                break;
+        break;
 
-            case "ai_portfolio_summary":
-            case "ai_account_summary":
-                const isAccountSummary = data.reportType === "ai_account_summary";
-                const currentHoldings =
-                    data.portfolioHoldings &&
-                    Object.keys(data.portfolioHoldings).length > 0
-                        ? [
-                            ...new Set(
-                                Object.values(data.portfolioHoldings).flatMap((h) =>
-                                    Object.keys(h.stockHoldingsTo),
-                                ),
-                            ),
-                        ]
-                        : [];
+      case "ai_portfolio_summary":
+      case "ai_account_summary":
+        const isAccountSummary = data.reportType === "ai_account_summary";
+        const currentHoldings =
+          data.portfolioHoldings &&
+          Object.keys(data.portfolioHoldings).length > 0
+            ? [
+                ...new Set(
+                  Object.values(data.portfolioHoldings).flatMap((h) =>
+                    Object.keys(h.stockHoldingsTo),
+                  ),
+                ),
+              ]
+            : [];
 
-                if (currentHoldings.length === 0) {
-                    htmlContent += `
+        if (currentHoldings.length === 0) {
+          htmlContent += `
             <div>
               <h2 class="section-header">${
-                        isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
-                    } as of ${formattedToDate} *</h2>
+                isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
+              } as of ${formattedToDate} *</h2>
               <p>No holdings available to generate AI predictions.</p>
             </div>
           `;
-                    break;
-                }
+          break;
+        }
 
-                console.log("Current holdings: ", currentHoldings);
+        console.log("Current holdings: ", currentHoldings);
 
-                const pricePromises = currentHoldings.map(async (symbol) => ({
-                    symbol,
-                    price: await getTodayPriceBySymbol(symbol),
-                }));
-                const prices = await Promise.all(pricePromises);
-                const currentPrices: Record<string, number> = prices.reduce(
-                    (acc, { symbol, price }) => {
-                        acc[symbol] = price;
-                        return acc;
-                    },
-                    {} as Record<string, number>,
-                );
+        const pricePromises = currentHoldings.map(async (symbol) => ({
+          symbol,
+          price: await getTodayPriceBySymbol(symbol),
+        }));
+        const prices = await Promise.all(pricePromises);
+        const currentPrices: Record<string, number> = prices.reduce(
+          (acc, { symbol, price }) => {
+            acc[symbol] = price;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
 
-                const aiPredictions: AIPrediction[] = await getAIPredictions(
-                    currentHoldings,
-                    currentPrices,
-                );
-                const aiRecommendations: AIPrediction[] = await getAIRecommendations(
-                    data.portfolioHoldings || {},
-                    aiPredictions,
-                );
+        const aiPredictions: AIPrediction[] = await getAIPredictions(
+          currentHoldings,
+          currentPrices,
+        );
+        const aiRecommendations: AIPrediction[] = await getAIRecommendations(
+          data.portfolioHoldings || {},
+          aiPredictions,
+        );
 
-                htmlContent += `
+        htmlContent += `
           <div>
             <h2 class="section-header">${
-                    isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
-                } as of ${formattedToDate} *</h2>
+              isAccountSummary ? "AI Account Summary" : "AI Portfolio Summary"
+            } as of ${formattedToDate} *</h2>
             
             <h3 class="portfolio-header">12-Month Price Predictions</h3>
             <table>
               <thead>
                 <tr>
                   <th>Stock/Fund</th>
-                  <th>Current Price ($)</th>
-                  <th>Predicted Price ($)</th>
+                  <th>Current Price (${currencySymbol})</th>
+                  <th>Predicted Price (${currencySymbol})</th>
                   <th>Predicted Change (%)</th>
                 </tr>
               </thead>
               <tbody>
-                ${aiPredictions
-                    .map(
-                        (pred) => `
-                  <tr>
-                    <td>${pred.symbol}</td>
-                    <td>$${pred.currentPrice.toFixed(2)}</td>
-                    <td>$${pred.predictedPrice12Months.toFixed(2)}</td>
-                    <td class="${
-                            pred.predictedChangePercentage >= 0
-                                ? "profit-positive"
-                                : "profit-negative"
+                ${await Promise.all(
+                  aiPredictions.map(async (pred) => {
+                    const formattedCurrentPrice = await convertAndFormatValue(
+                      pred.currentPrice,
+                      preferredCurrency,
+                      currencyRates,
+                    );
+                    const formattedPredictedPrice = await convertAndFormatValue(
+                      pred.predictedPrice12Months,
+                      preferredCurrency,
+                      currencyRates,
+                    );
+                    return `
+                      <tr>
+                        <td>${pred.symbol}</td>
+                        <td>${formattedCurrentPrice}</td>
+                        <td>${formattedPredictedPrice}</td>
+                        <td class="${
+                          pred.predictedChangePercentage >= 0
+                            ? "profit-positive"
+                            : "profit-negative"
                         }">${pred.predictedChangePercentage.toFixed(2)}%</td>
-                  </tr>
-                `,
-                    )
-                    .join("")}
+                      </tr>
+                    `;
+                  }),
+                ).then((rows) => rows.join(""))}
               </tbody>
             </table>
 
@@ -542,28 +627,38 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
               <thead>
                 <tr>
                   <th>Symbol</th>
-                  <th>Current Price ($)</th>
-                  <th>Predicted Price ($)</th>
+                  <th>Current Price (${currencySymbol})</th>
+                  <th>Predicted Price (${currencySymbol})</th>
                   <th>Predicted Change (%)</th>
                 </tr>
               </thead>
               <tbody>
-                ${aiRecommendations
-                    .map(
-                        (pred) => `
-                  <tr>
-                    <td>${pred.symbol || "N/A"}</td>
-                    <td>$${pred.currentPrice.toFixed(2)}</td>
-                    <td>$${pred.predictedPrice12Months.toFixed(2)}</td>
-                    <td class="${
-                            pred.predictedChangePercentage >= 0
-                                ? "profit-positive"
-                                : "profit-negative"
+                ${await Promise.all(
+                  aiRecommendations.map(async (pred) => {
+                    const formattedCurrentPrice = await convertAndFormatValue(
+                      pred.currentPrice,
+                      preferredCurrency,
+                      currencyRates,
+                    );
+                    const formattedPredictedPrice = await convertAndFormatValue(
+                      pred.predictedPrice12Months,
+                      preferredCurrency,
+                      currencyRates,
+                    );
+                    return `
+                      <tr>
+                        <td>${pred.symbol || "N/A"}</td>
+                        <td>${formattedCurrentPrice}</td>
+                        <td>${formattedPredictedPrice}</td>
+                        <td class="${
+                          pred.predictedChangePercentage >= 0
+                            ? "profit-positive"
+                            : "profit-negative"
                         }">${pred.predictedChangePercentage.toFixed(2)}%</td>
-                  </tr>
-                `,
-                    )
-                    .join("")}
+                      </tr>
+                    `;
+                  }),
+                ).then((rows) => rows.join(""))}
               </tbody>
             </table>
 
@@ -577,29 +672,28 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
               </thead>
               <tbody>
                 ${aiRecommendations
-                    .map(
-                        (pred) => `
-                  <tr>
-                    <td>${pred.symbol || "N/A"}</td>
-                    <td>${pred.justification || "No reasoning provided"}</td>
-                  </tr>
-                `,
-                    )
-                    .join("")}
+                  .map(
+                    (pred) => `
+                      <tr>
+                        <td>${pred.symbol || "N/A"}</td>
+                        <td>${pred.justification || "No reasoning provided"}</td>
+                      </tr>
+                    `,
+                  )
+                  .join("")}
               </tbody>
             </table>
             
             <p class="subheader">Note: AI predictions are generated using Google's Gemini 2.0 Flash model and are for demonstration purposes only.</p>
           </div>
         `;
-                break;
+        break;
 
-            default:
-                console.error(`Unsupported report type: ${data.reportType}`);
-        }
+      default:
+        console.error(`Unsupported report type: ${data.reportType}`);
+    }
 
-        // Add the "Portfolios Included" section at the bottom with subheader styling
-        htmlContent += `
+    htmlContent += `
       <div>
         <h2 class="subheader">* Portfolios Included</h2>
         <table class="subheader">
@@ -611,15 +705,15 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
           </thead>
           <tbody>
             ${data.portfolios
-            .map(
+              .map(
                 (portfolio) => `
               <tr>
                 <td>${portfolio.name || "N/A"}</td>
                 <td>${portfolio.description || "N/A"}</td>
               </tr>
             `,
-            )
-            .join("")}
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -627,26 +721,26 @@ export async function generatePDF(data: PortfolioData, first_name: string, last_
       </html>
     `;
 
-        console.log("Launching Puppeteer to generate PDF...");
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        });
-        const page = await browser.newPage();
-        await page.setContent(htmlContent);
-        const pdfBuffer = await page.pdf({
-            format: "A4",
-            printBackground: true,
-        });
-        await browser.close();
+    console.log("Launching Puppeteer to generate PDF...");
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
+    await browser.close();
 
-        console.log(
-            "Debug: PDF buffer successfully generated, size:",
-            pdfBuffer.length,
-        );
-        return Buffer.from(pdfBuffer);
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        throw error;
-    }
+    console.log(
+      "Debug: PDF buffer successfully generated, size:",
+      pdfBuffer.length,
+    );
+    return Buffer.from(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    throw error;
+  }
 }

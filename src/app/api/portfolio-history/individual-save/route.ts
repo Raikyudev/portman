@@ -129,6 +129,7 @@ export async function POST(request: Request) {
           { [symbol]: 0 },
           startDate,
           adjustedToDate,
+          request,
         );
         for (const [newDate, prices] of Object.entries(newPrices)) {
           stockPrices[newDate] = stockPrices[newDate] || {};
@@ -170,6 +171,7 @@ export async function POST(request: Request) {
               { [symbol]: holdingsForDate[symbol] },
               startDateForSymbol,
               date,
+              request,
             );
             for (const [newDate, prices] of Object.entries(newPrices)) {
               stockPrices[newDate] = stockPrices[newDate] || {};

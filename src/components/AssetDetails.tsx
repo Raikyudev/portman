@@ -1,11 +1,11 @@
-
-
 import AssetPriceChart from "./AssetPriceChart";
 import WatchlistButton from "./WatchlistButton"; // Import WatchlistButton
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 // Utility function to format large numbers
 const formatNumber = (num: number): string => {
@@ -56,7 +56,20 @@ export default function AssetDetails({
     trailingPE: 0,
     trailingAnnualDividendYield: 0,
   });
+  const [convertedDetails, setConvertedDetails] = useState<{
+    marketCap: string;
+    volume24h: string;
+    fiftyTwoWeekHigh: string;
+    fiftyTwoWeekLow: string;
+  }>({
+    marketCap: formatNumber(0),
+    volume24h: formatNumber(0),
+    fiftyTwoWeekHigh: formatNumber(0),
+    fiftyTwoWeekLow: formatNumber(0),
+  });
   const [symbol, setSymbol] = useState<string | null>(null);
+
+  const { preferredCurrency, isLoading, rates } = useCurrency();
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -79,6 +92,37 @@ export default function AssetDetails({
 
     fetchDetails();
   }, [symbol]);
+
+  useEffect(() => {
+    const convertDetails = async () => {
+      if (isLoading || !details || Object.values(details).every((v) => v === 0))
+        return;
+
+      const valuesToConvert = [
+        details.marketCap,
+        details.volume24h,
+        details.fiftyTwoWeekHigh,
+        details.fiftyTwoWeekLow,
+      ];
+
+      const formatted = await batchConvertAndFormatCurrency(
+        valuesToConvert,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      setConvertedDetails({
+        marketCap: formatted[0],
+        volume24h: formatted[1],
+        fiftyTwoWeekHigh: formatted[2],
+        fiftyTwoWeekLow: formatted[3],
+      });
+    };
+
+    convertDetails();
+  }, [details, preferredCurrency, isLoading, rates]);
 
   return (
     <Card className="bg-true-black text-white p-4 rounded-lg relative h-[74vh] flex flex-col justify-between overflow-y-auto">
@@ -132,21 +176,19 @@ export default function AssetDetails({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-400">Market Cap</p>
-              <p className="text-lg">{formatNumber(details.marketCap)}</p>
+              <p className="text-lg">{convertedDetails.marketCap}</p>
             </div>
             <div>
               <p className="text-sm text-gray-400">Volume (24h)</p>
-              <p className="text-lg">{formatNumber(details.volume24h)}</p>
+              <p className="text-lg">{convertedDetails.volume24h}</p>
             </div>
             <div>
               <p className="text-sm text-gray-400">52 Week High</p>
-              <p className="text-lg">
-                {formatNumber(details.fiftyTwoWeekHigh)}
-              </p>
+              <p className="text-lg">{convertedDetails.fiftyTwoWeekHigh}</p>
             </div>
             <div>
               <p className="text-sm text-gray-400">52 Week Low</p>
-              <p className="text-lg">{formatNumber(details.fiftyTwoWeekLow)}</p>
+              <p className="text-lg">{convertedDetails.fiftyTwoWeekLow}</p>
             </div>
             <div>
               <p className="text-sm text-gray-400">P/E Ratio</p>

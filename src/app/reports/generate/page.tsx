@@ -37,7 +37,7 @@ import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { reportTypes } from "@/lib/constants";
 import Image from "next/image";
-import {router} from "next/client";
+import { useRouter } from "next/navigation"; // Correct import for useRouter
 
 const formSchema = z
   .object({
@@ -85,6 +85,7 @@ export default function Page() {
   const [portfolios, setPortfolios] = useState<IExtendedPortfolio[]>([]);
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter(); // Use the useRouter hook
 
   const formatOptions = [
     { value: "pdf", label: "PDF" },
@@ -233,18 +234,18 @@ export default function Page() {
         <div className="w-[90%] mx-auto min-w-[600px] max-w-[1200px] bg-true-black">
           <Card className="bg-true-black no-border w-full">
             <Button
-                variant="ghost"
-                size="icon"
-                className="flex self-start text-white hover:bg-gray-800 mt-6 mx-6"
-                aria-label="Go back to portfolio page"
-                onClick={() => router.push(`/reports`)}
+              variant="ghost"
+              size="icon"
+              className="flex self-start text-white hover:bg-gray-800 mt-6 mx-6"
+              aria-label="Go back to portfolio page"
+              onClick={() => router.push(`/reports`)} // Use router.push
             >
               <Image
-                  src="/white-arrow.svg"
-                  alt="Back Arrow"
-                  width={32}
-                  height={32}
-                  className="bg-black hover:bg-red rounded-md"
+                src="/white-arrow.svg"
+                alt="Back Arrow"
+                width={32}
+                height={32}
+                className="bg-black hover:bg-red rounded-md"
               />
             </Button>
             <CardHeader>
@@ -434,14 +435,13 @@ export default function Page() {
                   </div>
                   <div className="flex justify-center items-center">
                     <Button
-                        type="submit"
-                        className="bg-red hover:bg-white hover:text-true-black text-white font-semibold p-3 rounded-lg"
-                        disabled={isSubmitting}
+                      type="submit"
+                      className="bg-red hover:bg-white hover:text-true-black text-white font-semibold p-3 rounded-lg"
+                      disabled={isSubmitting}
                     >
                       {isSubmitting ? "Generating..." : "Generate Report"}
                     </Button>
                   </div>
-
                 </form>
               </Form>
             </CardContent>

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import TimeRangeSelector from "./TimeRangeSelector";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface PortfolioHistoryEntry {
   port_total_value: number;
@@ -35,7 +37,10 @@ export default function PerformanceChart({
   const [selectedRange, setSelectedRange] = useState<string>("YTD");
   const [error, setError] = useState<string | null>(null);
 
-  // Memoize the fetch function to prevent recreation on every render
+  const { preferredCurrency, isLoading, rates } = useCurrency();
+  const [formattedPortfolioValue, setFormattedPortfolioValue] = useState("");
+  const [formattedProfitAmount, setFormattedProfitAmount] = useState("");
+
   const fetchPortfolioHistory = useCallback(async () => {
     setError(null);
     try {
@@ -80,11 +85,31 @@ export default function PerformanceChart({
         error instanceof Error ? error.message : "An unknown error occurred",
       );
     }
-  }, [portfolioId, selectedRange, onPerformanceUpdate]); // Dependencies are stable
+  }, [portfolioId, selectedRange, onPerformanceUpdate]);
 
   useEffect(() => {
     fetchPortfolioHistory();
-  }, [fetchPortfolioHistory]); // Only depends on the memoized function
+  }, [fetchPortfolioHistory]);
+
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading) return;
+
+      const [formattedValue, formattedProfit] =
+        await batchConvertAndFormatCurrency(
+          [portfolioValue, profit.amount],
+          "USD",
+          preferredCurrency,
+          "en-US",
+          rates,
+        );
+
+      setFormattedPortfolioValue(formattedValue);
+      setFormattedProfitAmount(formattedProfit);
+    };
+
+    updateCurrencyValues();
+  }, [portfolioValue, profit.amount, preferredCurrency, isLoading, rates]);
 
   const chartData = portfolioHistory.map((entry) => ({
     date: new Date(entry.port_history_date).toLocaleDateString(),
@@ -130,14 +155,16 @@ export default function PerformanceChart({
           ) : (
             <>
               <div className="text-2xl font-bold">
-                ${portfolioValue.toLocaleString()}
+                {formattedPortfolioValue}
               </div>
               <div
-                className={`mt-2 text-sm ${profit.percentage >= 0 ? "text-green-500" : "text-red-500"}`}
+                className={`mt-2 text-sm ${
+                  profit.percentage >= 0 ? "text-green-500" : "text-red-500"
+                }`}
               >
                 {profit.percentage >= 0
-                  ? `+${profit.percentage}%`
-                  : `${profit.percentage}%`}
+                  ? `+${profit.percentage}% (${formattedProfitAmount})`
+                  : `${profit.percentage}% (${formattedProfitAmount})`}
               </div>
             </>
           )}

@@ -1,4 +1,3 @@
-// src/components/PortfolioAllocation.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,9 +18,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import AssetPriceChart from "@/components/AssetPriceChart";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface Holding {
-  id: string; // Added id property
+  id: string;
   name: string;
   symbol: string;
   shares: number;
@@ -40,6 +41,10 @@ export default function PortfolioAllocation({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const { preferredCurrency, isLoading, rates } = useCurrency();
+  const [formattedValues, setFormattedValues] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     const fetchHoldings = async () => {
@@ -71,6 +76,29 @@ export default function PortfolioAllocation({
       fetchHoldings();
     }
   }, [portfolioId]);
+
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading) return;
+
+      const values = holdings.map((h) => h.value);
+      const formattedValuesArray = await batchConvertAndFormatCurrency(
+        values,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      const newFormattedValues: Record<string, string> = {};
+      holdings.forEach((holding, index) => {
+        newFormattedValues[holding.id] = formattedValuesArray[index];
+      });
+      setFormattedValues(newFormattedValues);
+    };
+
+    updateCurrencyValues();
+  }, [holdings, preferredCurrency, isLoading, rates]);
 
   const sortedHoldings = [...holdings].sort((a, b) => b.value - a.value);
   const top5Holdings = sortedHoldings.slice(0, 5);
@@ -112,7 +140,7 @@ export default function PortfolioAllocation({
     setSelectedAssetId(null);
   };
 
-  if (loading) return <div>Loading portfolio allocation...</div>;
+  if (loading || isLoading) return <div>Loading portfolio allocation...</div>;
   if (error) return <div>{error}</div>;
   if (!holdings.length) return <div>No holdings found</div>;
 
@@ -187,7 +215,10 @@ export default function PortfolioAllocation({
                         <TableCell>{holding.symbol}</TableCell>
                         <TableCell>{holding.name}</TableCell>
                         <TableCell>{holding.shares}</TableCell>
-                        <TableCell>${holding.value.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {formattedValues[holding.id] ||
+                            holding.value.toLocaleString()}
+                        </TableCell>
                         <TableCell>{holding.percentage}%</TableCell>
                       </TableRow>
                     ))

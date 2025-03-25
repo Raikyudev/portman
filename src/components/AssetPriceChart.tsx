@@ -1,4 +1,3 @@
-// src/components/AssetPriceChart.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import TimeRangeSelector from "./TimeRangeSelector";
 import Image from "next/image";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface PriceData {
   date: string;
@@ -20,16 +21,16 @@ interface AssetPriceResponse {
 
 interface AssetPriceChartProps {
   assetId: string;
-  onClose?: () => void; // Make onClose optional
-  hideCross?: boolean; // Optional prop to hide the cross button
-  onSymbolFetched?: (symbol: string) => void; // Optional callback to pass the symbol
+  onClose?: () => void;
+  hideCross?: boolean;
+  onSymbolFetched?: (symbol: string) => void;
 }
 
 export default function AssetPriceChart({
   assetId,
   onClose,
-  hideCross = false, // Default to false if not provided
-  onSymbolFetched, // Optional callback
+  hideCross = false,
+  onSymbolFetched,
 }: AssetPriceChartProps) {
   const [priceData, setPriceData] = useState<PriceData[]>([]);
   const [latestPrice, setLatestPrice] = useState(0);
@@ -39,6 +40,10 @@ export default function AssetPriceChart({
   const [selectedRange, setSelectedRange] = useState("YTD");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { preferredCurrency, isLoading, rates } = useCurrency();
+
+  const [formattedLatestPrice, setFormattedLatestPrice] = useState("");
+  const [formattedProfitAmount, setFormattedProfitAmount] = useState("");
 
   useEffect(() => {
     const fetchPriceData = async () => {
@@ -58,7 +63,6 @@ export default function AssetPriceChart({
         setSymbol(data.symbol || "N/A");
         setPriceData(data.priceHistory || []);
 
-        // Pass the symbol back to the parent (AssetDetails) if callback is provided
         if (onSymbolFetched && data.symbol) {
           onSymbolFetched(data.symbol);
         }
@@ -121,7 +125,27 @@ export default function AssetPriceChart({
     };
 
     fetchPriceData();
-  }, [assetId, selectedRange, onSymbolFetched]); // Added onSymbolFetched to dependency array
+  }, [assetId, selectedRange, onSymbolFetched]);
+
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading) return;
+
+      const [formattedPrice, formattedProfit] =
+        await batchConvertAndFormatCurrency(
+          [latestPrice, profit.amount],
+          "USD",
+          preferredCurrency,
+          "en-US",
+          rates,
+        );
+
+      setFormattedLatestPrice(formattedPrice);
+      setFormattedProfitAmount(formattedProfit);
+    };
+
+    updateCurrencyValues();
+  }, [latestPrice, profit.amount, preferredCurrency, isLoading, rates]);
 
   const chartData = priceData.map((entry) => ({
     date: new Date(entry.date).toLocaleDateString(),
@@ -192,17 +216,15 @@ export default function AssetPriceChart({
       </div>
       <CardContent className="p-0 flex items-start w-full">
         <div className="p-4 text-white">
-          <div className="text-2xl font-bold">
-            ${latestPrice.toLocaleString()}
-          </div>
+          <div className="text-2xl font-bold">{formattedLatestPrice}</div>
           <div
             className={`mt-2 text-sm ${profit.percentage >= 0 ? "text-green-500" : "text-red"}`}
           >
             {isNaN(profit.percentage)
               ? "N/A"
               : profit.percentage >= 0
-                ? `+${profit.percentage}%`
-                : `-${Math.abs(profit.percentage)}%`}
+                ? `+${profit.percentage}% (${formattedProfitAmount})`
+                : `-${Math.abs(profit.percentage)}% (${formattedProfitAmount})`}
           </div>
         </div>
         <div className="flex-1 h-[15vh] w-full">

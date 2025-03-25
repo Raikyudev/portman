@@ -8,6 +8,16 @@ export const SUPPORTED_CURRENCIES = [
   "CNY",
 ] as const;
 
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  CAD: "$",
+  GBP: "£",
+  EUR: "€",
+  JPY: "¥",
+  HKD: "$",
+  CNY: "¥",
+};
+
 export const REPORT_FORMATS = ["json", "pdf"] as const;
 export type ReportFormat = (typeof REPORT_FORMATS)[number];
 

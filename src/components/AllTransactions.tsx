@@ -10,6 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
 interface Transaction {
   date: string;
@@ -21,7 +23,7 @@ interface Transaction {
 }
 
 interface AllTransactionsProps {
-  portfolioId?: string; // Optional portfolioId prop
+  portfolioId?: string;
 }
 
 export default function AllTransactions({
@@ -30,12 +32,15 @@ export default function AllTransactions({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { preferredCurrency, isLoading, rates } = useCurrency();
+  const [formattedPrices, setFormattedPrices] = useState<
+    Record<string, { price: string; total: string }>
+  >({});
 
   useEffect(() => {
     const fetchAllTransactions = async () => {
       setLoading(true);
       try {
-        // Construct the API URL based on whether portfolioId is provided
         const url = portfolioId
           ? `/api/transactions?portfolio_id=${portfolioId}`
           : "/api/transactions";
@@ -74,14 +79,52 @@ export default function AllTransactions({
     };
 
     fetchAllTransactions();
-  }, [portfolioId]); // Add portfolioId as a dependency to refetch when it changes
+  }, [portfolioId]);
+
+  useEffect(() => {
+    const updateCurrencyValues = async () => {
+      if (isLoading) return;
+
+      const prices = transactions.map((t) => t.price);
+      const totals = transactions.map((t) => t.total);
+
+      const formattedPricesArray = await batchConvertAndFormatCurrency(
+        prices,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+      const formattedTotalsArray = await batchConvertAndFormatCurrency(
+        totals,
+        "USD",
+        preferredCurrency,
+        "en-US",
+        rates,
+      );
+
+      const newFormattedValues: Record<
+        string,
+        { price: string; total: string }
+      > = {};
+      transactions.forEach((_, index) => {
+        newFormattedValues[index] = {
+          price: formattedPricesArray[index],
+          total: formattedTotalsArray[index],
+        };
+      });
+      setFormattedPrices(newFormattedValues);
+    };
+
+    updateCurrencyValues();
+  }, [transactions, preferredCurrency, isLoading, rates]);
 
   return (
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-4 text-white">All Transactions</h2>
       {error && <div className="text-red mb-4">{error}</div>}
       <ScrollArea className="h-[calc(80vh-12rem)] max-h-full w-full p-2">
-        {loading ? (
+        {loading || isLoading ? (
           <p className="text-gray-300">Loading all transactions...</p>
         ) : (
           <Table className="w-full table-auto no-border">
@@ -106,10 +149,12 @@ export default function AllTransactions({
                       {item.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      ${item.price.toLocaleString()}
+                      {formattedPrices[index]?.price ||
+                        item.price.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      ${item.total.toLocaleString()}
+                      {formattedPrices[index]?.total ||
+                        item.total.toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))
