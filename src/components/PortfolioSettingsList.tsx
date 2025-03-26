@@ -23,6 +23,7 @@ export default function PortfolioSettingsList() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(
     null,
   );
@@ -50,10 +51,17 @@ export default function PortfolioSettingsList() {
     fetchPortfolios();
   }, []);
 
-  const handleDeleteClick = async (portfolioId: string) => {
+  const handleDeleteClick = (portfolio: Portfolio) => {
+    setSelectedPortfolio(portfolio);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePortfolio = async () => {
+    if (!selectedPortfolio) return;
+
     try {
       const response = await fetch(
-        `/api/portfolio/delete?portfolioId=${portfolioId}`,
+        `/api/portfolio/delete?portfolioId=${selectedPortfolio._id}`,
         {
           method: "DELETE",
         },
@@ -61,8 +69,12 @@ export default function PortfolioSettingsList() {
 
       if (response.ok) {
         setPortfolios(
-          portfolios.filter((portfolio) => portfolio._id !== portfolioId),
+          portfolios.filter(
+            (portfolio) => portfolio._id !== selectedPortfolio._id,
+          ),
         );
+        setIsDeleteDialogOpen(false);
+        setSelectedPortfolio(null);
       } else {
         const data = await response.json();
         console.error(data.error);
@@ -150,7 +162,7 @@ export default function PortfolioSettingsList() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDeleteClick(portfolio._id)}
+                      onClick={() => handleDeleteClick(portfolio)}
                       className="bg-red hover:bg-white hover:text-true-black"
                     >
                       Delete
@@ -196,6 +208,32 @@ export default function PortfolioSettingsList() {
               Cancel
             </Button>
             <Button onClick={handleEditSubmit}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to delete this portfolio?</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeletePortfolio}
+              className="bg-red hover:bg-white hover:text-true-black"
+            >
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

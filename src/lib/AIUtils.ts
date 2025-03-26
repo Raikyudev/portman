@@ -144,11 +144,15 @@ Don't leave a gap (So no more than one new line) between the sections of your re
   const response = await callGeminiAPI(prompt);
   console.log("Recommendation response: ", response);
 
-  const [symbolsPart, ...remainingParts] = response.split(".");
-  const suggestedSymbols = symbolsPart
+  const lines = response
+    .split("\n")
+    .map((line: string) => line.trim())
+    .filter((line: string) => line);
+
+  const suggestedSymbols: string[] = lines[0]
     .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s && /^[A-Z]+$/.test(s))
+    .map((s: string) => s.trim().replace(/[^A-Z]/g, ""))
+    .filter((s: string) => s)
     .slice(0, 3);
 
   if (suggestedSymbols.length === 0) {
@@ -161,57 +165,44 @@ Don't leave a gap (So no more than one new line) between the sections of your re
   let justifications: string[] = [];
   let growthPercentages: Record<string, number> = {};
 
-  const remainingText = remainingParts.join(".");
-  const lines = remainingText
-    .split(".")
-    .map((line) => line.trim())
-    .filter((line) => line);
-
-  justifications = suggestedSymbols.map((symbol) => {
-    const justificationLine = lines.find((line) =>
-      line.startsWith(`${symbol}:`),
-    );
-    if (justificationLine) {
-      const text = justificationLine.replace(`${symbol}:`, "").trim();
-      // Stop at the next symbol or percentage
-      const nextSymbolIndex = suggestedSymbols
-        .filter((s) => s !== symbol)
-        .map((s) => text.indexOf(`${s}:`))
-        .filter((i) => i >= 0)
-        .sort((a, b) => a - b)[0];
-      const percentageIndex = text.indexOf("%");
-      if (
-        nextSymbolIndex >= 0 &&
-        (percentageIndex < 0 || nextSymbolIndex < percentageIndex)
-      ) {
-        return text.substring(0, nextSymbolIndex).trim();
-      }
-      if (percentageIndex >= 0) {
-        return text.substring(0, percentageIndex).trim();
-      }
-      return text;
+  justifications = suggestedSymbols.map((symbol: string, index: number) => {
+    const justificationLine: string = lines[index + 1];
+    if (justificationLine && justificationLine.startsWith(`${symbol}:`)) {
+      return justificationLine.replace(`${symbol}:`, "").trim();
     }
     return "No reasoning provided";
   });
 
-  lines.forEach((line) => {
-    if (line.includes("%")) {
-      const percentageParts = line.split(",").map((part) => part.trim());
-      percentageParts.forEach((part) => {
-        suggestedSymbols.forEach((symbol) => {
-          if (part.startsWith(`${symbol}:`)) {
-            const percentageMatch = part.match(/(\d+\.?\d*)%/);
-            if (percentageMatch) {
-              const percentage = parseFloat(
-                percentageMatch[0].replace("%", ""),
-              );
-              if (!isNaN(percentage)) {
-                growthPercentages[symbol] = percentage;
-              }
+  const percentageLine: string = lines[4];
+  if (percentageLine) {
+    const percentageParts: string[] = percentageLine
+      .split(",")
+      .map((part: string) => part.trim())
+      .filter((part: string) => part);
+    percentageParts.forEach((part: string) => {
+      suggestedSymbols.forEach((symbol: string) => {
+        if (part.startsWith(`${symbol}:`)) {
+          const percentageMatch: RegExpMatchArray | null =
+            part.match(/(\d+\.?\d*)%/);
+          if (percentageMatch) {
+            const percentage: number = parseFloat(
+              percentageMatch[0].replace("%", ""),
+            );
+
+            if (!isNaN(percentage)) {
+              growthPercentages[symbol] = percentage;
+            } else {
             }
+          } else {
           }
-        });
+        }
       });
+    });
+  }
+
+  suggestedSymbols.forEach((symbol: string) => {
+    if (!(symbol in growthPercentages)) {
+      growthPercentages[symbol] = 0;
     }
   });
 
