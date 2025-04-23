@@ -28,7 +28,6 @@ export const authOptions: AuthOptions = {
         },
       },
       async authorize(credentials) {
-        console.log(credentials);
         if (!credentials || !credentials.email || !credentials.password) {
           throw new Error("Missing credentials");
         }

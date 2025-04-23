@@ -27,7 +27,7 @@ export async function getStockPrices(
   holdings: Record<string, number>,
   startDate: string,
   endDate: string,
-  request: Request, // Add Request parameter
+  request: Request,
 ): Promise<Record<string, Record<string, number>>> {
   const stockPrices: Record<string, Record<string, number>> = {};
   const currentDate = new Date().toISOString().split("T")[0];

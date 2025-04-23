@@ -684,7 +684,7 @@ export async function generatePDF(
               </tbody>
             </table>
             
-            <p class="subheader">Note: AI predictions are generated using Google's Gemini 2.0 Flash model and are for demonstration purposes only.</p>
+            <p class="subheader">Note: AI predictions are generated using Google's Gemini 2.0 Flash model and are for demonstration purposes only and should not be treated as financial advice.</p>
           </div>
         `;
         break;

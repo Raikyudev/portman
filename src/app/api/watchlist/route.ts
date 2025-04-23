@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Types } from "mongoose";
 import Asset from "@/models/Asset";
-import { getPriceChange } from "@/lib/stockPrices"; // Import the new function
+import { getPriceChange } from "@/lib/stockPrices";
 
 const watchlistSchema = z.object({
   asset_id: z.string().refine((id) => Types.ObjectId.isValid(id), {
@@ -60,17 +60,6 @@ export async function GET() {
           asset_id: "$asset_id", // Include asset_id
           symbol: { $ifNull: ["$asset.symbol", null] }, // Retain symbol
           price: { $ifNull: ["$asset.price", 0] }, // Include current price from Asset
-          // Replace price_change_pct with dynamic getPriceChange
-          change: {
-            $concat: [
-              {
-                $toString: {
-                  $ifNull: [{ $round: ["$asset.price_change_pct", 2] }, 0],
-                },
-              },
-              "%",
-            ],
-          },
         },
       },
     ]).exec();

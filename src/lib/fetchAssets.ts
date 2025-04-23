@@ -51,9 +51,7 @@ export default async function fetchAssets(request: Request) {
       (stock) => stock.exchangeShortName in exchangeCurrencyMap,
     );
 
-    console.log("Fetching all currency rates server-side...");
     const currencyRates = await getServerExchangeRates(request);
-    console.log(`Loaded ${currencyRates.size} currency rates.`);
 
     const logInterval = setInterval(() => {
       console.log(`Processing... ${stocks.length} assets remaining`);

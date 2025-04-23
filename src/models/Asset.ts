@@ -37,8 +37,8 @@ const assetSchema: Schema = new mongoose.Schema({
     default: Date.now,
   },
 });
-assetSchema.index({ symbol: "text", name: "text" }); // Text index for full-text search
-assetSchema.index({ name: 1 }); // Index for name matching
+assetSchema.index({ symbol: "text", name: "text" });
+assetSchema.index({ name: 1 });
 const Asset =
   mongoose.models.Asset || mongoose.model<IAsset>("Asset", assetSchema);
 
