@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    const endDate = getTodayDate(); // e.g., "2025-03-09"
+    const endDate = getTodayDate();
     let startDate: string;
 
     const today = new Date(endDate);

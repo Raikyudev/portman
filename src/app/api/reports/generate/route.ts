@@ -138,7 +138,7 @@ export async function POST(request: Request) {
           session.user.first_name || "User",
           session.user.last_name || "",
           preferredCurrency,
-          currencyRates, // Pass the pre-fetched rates
+          currencyRates,
         );
         mimeType = "application/pdf";
         break;

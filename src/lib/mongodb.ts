@@ -5,7 +5,7 @@ const connection: { isConnected?: number; mongoServer?: MongoMemoryServer } =
   {};
 
 async function dbConnect(): Promise<void> {
-  if (connection.isConnected) {
+  if (connection.isConnected || mongoose.connection.readyState >= 1) {
     console.log("Already connected to MongoDB");
     return;
   }
@@ -15,11 +15,8 @@ async function dbConnect(): Promise<void> {
     connection.mongoServer = await MongoMemoryServer.create();
     const uri = connection.mongoServer.getUri();
 
-    const db = await mongoose.connect(uri, {
-      dbName: "portman",
-    });
-
-    connection.isConnected = db.connections[0].readyState;
+    await mongoose.connect(uri, { dbName: "portman" });
+    connection.isConnected = mongoose.connection.readyState;
   } else {
     const MONGODB_URI: string = process.env.MONGODB_URI || "";
 
@@ -28,10 +25,8 @@ async function dbConnect(): Promise<void> {
     }
 
     try {
-      const db = await mongoose.connect(MONGODB_URI, {
-        dbName: "portman",
-      });
-      connection.isConnected = db.connections[0].readyState;
+      await mongoose.connect(MONGODB_URI, { dbName: "portman" });
+      connection.isConnected = mongoose.connection.readyState;
       console.log("Using Database:", mongoose.connection.name);
     } catch (error) {
       console.error("MongoDB connection error:", error);
@@ -55,6 +50,7 @@ async function closeDatabase(): Promise<void> {
       console.error("Error closing MongoDB connection:", error);
     }
   }
+
   connection.isConnected = undefined;
 }
 

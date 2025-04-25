@@ -4,10 +4,9 @@ import yahooFinance from "yahoo-finance2";
 
 export async function GET() {
   try {
-    // Fetch top gainers using dailyGainers with validation disabled
     const gainersResponse = await yahooFinance.dailyGainers(
       { count: 10 },
-      { validateResult: false }, // Disable validation
+      { validateResult: false },
     );
     if (!gainersResponse || !gainersResponse.quotes) {
       console.warn("No gainers quotes available, response:", gainersResponse);
@@ -24,10 +23,9 @@ export async function GET() {
       }),
     );
 
-    // Fetch top losers using screener with day_losers
     const losersResponse = await yahooFinance.screener(
       { scrIds: "day_losers", count: 10 },
-      { validateResult: false }, // Disable validation
+      { validateResult: false },
     );
     if (!losersResponse || !losersResponse.quotes) {
       console.warn("No losers quotes available, response:", losersResponse);

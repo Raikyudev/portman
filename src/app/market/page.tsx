@@ -188,7 +188,7 @@ export default function MarketPage() {
               <h2 className="text-lg font-semibold mb-2">
                 Market Overview (Major Indices)
               </h2>
-              <p>Please enter a query to search for assets.</p>
+              <p>Thonk</p>
             </div>
           </div>
 
