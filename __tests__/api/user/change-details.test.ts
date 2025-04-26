@@ -1,3 +1,4 @@
+//Tests F5 requirement
 import { jest } from "@jest/globals";
 
 jest.mock("next-auth", () => ({

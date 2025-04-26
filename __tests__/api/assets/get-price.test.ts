@@ -1,3 +1,4 @@
+//Tests F4 requirement
 import { GET } from "@/app/api/assets/get-price/route";
 import Asset from "@/models/Asset";
 import { NextRequest } from "next/server";

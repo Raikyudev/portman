@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   await dbConnect();
 
+  // Get token from the url
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
 
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    // Find user by token and check if the token is not expired
     const user = await User.findOne({
       verificationToken: token,
       verificationTokenExpires: { $gt: new Date() },
@@ -28,6 +30,7 @@ export async function GET(request: Request) {
       );
     }
 
+    // Verify user and remove token fields
     user.isVerified = true;
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;

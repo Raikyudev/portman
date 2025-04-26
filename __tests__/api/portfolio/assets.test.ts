@@ -1,3 +1,4 @@
+//Tests F16 requirement
 import { GET } from "@/app/api/portfolio/assets/route";
 import { connectTestDB, closeDatabase } from "@/lib/testUtils";
 import mongoose from "mongoose";

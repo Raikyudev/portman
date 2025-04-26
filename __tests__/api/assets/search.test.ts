@@ -1,3 +1,4 @@
+//Tests F10 and F13 requirements
 import { GET } from "@/app/api/assets/search/route";
 import Asset from "@/models/Asset";
 import { NextRequest } from "next/server";

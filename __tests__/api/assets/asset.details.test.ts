@@ -1,8 +1,10 @@
+//Tests F4 requirement
 import { GET } from "@/app/api/assets/details/route";
 import { getServerSession } from "next-auth";
 import { getAssetDetailsData } from "@/lib/stockPrices";
 import { connectTestDB, closeDatabase } from "@/lib/testUtils";
 
+//Mocks for the tests to work
 jest.mock("next-auth", () => ({
   getServerSession: jest.fn(),
 }));
@@ -17,7 +19,7 @@ jest.mock("next/server", () => ({
   },
 }));
 
-describe("GET function", () => {
+describe("/api/assets/details tests", () => {
   beforeAll(async () => {
     await connectTestDB();
   });

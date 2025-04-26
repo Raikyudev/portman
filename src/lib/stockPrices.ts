@@ -33,35 +33,33 @@ export async function getStockPrices(
   const currentDate = new Date().toISOString().split("T")[0];
   const adjustedStartDate = adjustDateToValidRange(startDate, currentDate);
   const adjustedEndDate = adjustDateToValidRange(endDate, currentDate);
-  const dateRange = getDateRange(adjustedStartDate, adjustedEndDate);
+  const dateRange = getDateRange(adjustedStartDate, adjustedEndDate).sort();
 
   if (!holdings || Object.keys(holdings).length === 0) {
     return stockPrices;
   }
 
-  console.log("Fetching server-side currency rates...");
   const currencyRates = await getServerExchangeRates(request);
 
   const symbols = Object.keys(holdings);
-  console.log("Validating symbols:", symbols);
-
+  const symbolQuotes: Map<string, any> = new Map();
   const validSymbols: string[] = [];
-  const validationPromises = symbols.map(async (symbol) => {
-    const isValid = await isValidSymbol(symbol);
-    if (isValid) {
-      validSymbols.push(symbol);
-    } else {
-      console.warn(`Skipping invalid symbol: ${symbol}`);
-    }
-  });
-  await Promise.all(validationPromises);
+
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      if (await isValidSymbol(symbol)) {
+        const quote = await yahooFinance.quote(symbol);
+        symbolQuotes.set(symbol, quote);
+        validSymbols.push(symbol);
+      } else {
+        console.warn(`Skipping invalid symbol: ${symbol}`);
+      }
+    }),
+  );
 
   if (validSymbols.length === 0) {
-    console.log("No valid symbols found, returning empty stock prices");
     return stockPrices;
   }
-
-  console.log("Fetching prices for valid symbols:", validSymbols);
 
   const priceHistoryPromises = validSymbols.map((symbol) =>
     getFullPriceHistory(symbol, adjustedStartDate, adjustedEndDate),
@@ -71,8 +69,8 @@ export async function getStockPrices(
   for (let i = 0; i < validSymbols.length; i++) {
     const symbol = validSymbols[i];
     const history = priceHistories[i];
-    const quote = await yahooFinance.quote(symbol); // Fetch currency info
-    const stockCurrency = quote.currency || "USD";
+    const quote = symbolQuotes.get(symbol);
+    const stockCurrency = quote?.currency || "USD";
     const rate = currencyRates.get(stockCurrency.toUpperCase()) || 1;
 
     for (const entry of history) {
@@ -80,7 +78,6 @@ export async function getStockPrices(
       stockPrices[date] = stockPrices[date] || {};
       let price = entry.price;
 
-      // Convert to USD
       price = stockCurrency !== "USD" ? price / rate : price;
 
       if (price === 0) {
@@ -91,6 +88,7 @@ export async function getStockPrices(
           request,
         );
       }
+
       stockPrices[date][symbol] =
         price > 0
           ? price
@@ -98,16 +96,30 @@ export async function getStockPrices(
     }
   }
 
+  const lastKnownPrices: Record<string, number> = {};
+
   for (const date of dateRange) {
-    if (!stockPrices[date]) {
-      stockPrices[date] = {};
-      for (const symbol of validSymbols) {
-        stockPrices[date][symbol] = await fetchPriceForDay(
+    stockPrices[date] = stockPrices[date] || {};
+
+    for (const symbol of validSymbols) {
+      if (
+        stockPrices[date][symbol] !== undefined &&
+        stockPrices[date][symbol] > 0
+      ) {
+        lastKnownPrices[symbol] = stockPrices[date][symbol];
+      } else if (lastKnownPrices[symbol] !== undefined) {
+        stockPrices[date][symbol] = lastKnownPrices[symbol];
+      } else {
+        const fallbackPrice = await fetchPriceForDay(
           symbol,
           date,
           undefined,
           request,
         );
+        stockPrices[date][symbol] = fallbackPrice;
+        if (fallbackPrice > 0) {
+          lastKnownPrices[symbol] = fallbackPrice;
+        }
       }
     }
   }
@@ -186,7 +198,7 @@ async function fetchPriceForDay(
   symbol: string,
   currentDate: string,
   lastKnownPriceMap?: Record<string, { open: number; close: number }>,
-  request?: Request, // Add Request parameter
+  request?: Request,
 ): Promise<number> {
   try {
     const period1 = new Date(currentDate);
@@ -237,6 +249,9 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
     const currentPrice = quote.regularMarketPrice ?? 0;
 
     if (currentPrice > 0) {
+      console.log(
+        `Price for ${symbol} fetched from Yahoo Finance: ${currentPrice}`,
+      );
       return currentPrice;
     }
     console.log(`Yahoo Finance returned no valid price for ${symbol}`);

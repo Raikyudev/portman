@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   await dbConnect();
 
   try {
+    // Get the params
     const { searchParams } = new URL(request.url);
     const currency1 = searchParams.get("currency1");
     const currency2 = searchParams.get("currency2");
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
       );
     }
 
+    // If both currencies are usd
     if (currency1.toUpperCase() === "USD" && !currency2) {
       return NextResponse.json(
         {
@@ -33,6 +35,7 @@ export async function GET(request: Request) {
     const c1 = currency1.toUpperCase();
     const c2 = currency2 ? currency2.toUpperCase() : "USD";
 
+    // Fetch exchange rates from database
     const rates = await CurrencyRate.find({ currency: { $in: [c1, c2] } });
 
     const rateMap: Record<string, number> = {};
@@ -40,6 +43,7 @@ export async function GET(request: Request) {
       rateMap[rate.currency] = rate.rate;
     });
 
+    // Return rate against USD id only one currency
     if (!currency2) {
       const rate = rateMap[c1] || 1;
       return NextResponse.json(
@@ -52,6 +56,7 @@ export async function GET(request: Request) {
       );
     }
 
+    // Calculate exchange rate between two currencies
     const rate1 = rateMap[c1] || 1;
     const rate2 = rateMap[c2] || 1;
     const exchangeRate = rate1 / rate2;

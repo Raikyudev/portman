@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import nodemailer from "nodemailer";
 
+// Set up the email transporter
 const transporter = nodemailer.createTransport({
   host: "smtp.resend.com",
   port: 587,
@@ -18,8 +19,10 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Get email from request
     const { email } = await request.json();
 
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json(
@@ -28,13 +31,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Generate reset token and expiration time and update the user with the token
     const resetToken = uuidv4();
     const resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
     user.resetToken = resetToken;
     user.resetTokenExpires = resetTokenExpires;
     await user.save();
 
+    // Create and send the reset email
     const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset-password?token=${resetToken}`;
     await transporter.sendMail({
       from: "no-reply@portman-demo.tech",

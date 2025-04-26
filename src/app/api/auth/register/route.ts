@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { uuidv4 } from "mongodb-memory-server-core/lib/util/utils";
 
+// Set up email transporter
 const transporter = nodemailer.createTransport({
   host: "smtp.resend.com",
   port: 587,
@@ -18,8 +19,11 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Get user information from request
     const requestBody = await request.json();
     const { first_name, last_name, email, password } = requestBody;
+
+    // Check if user already exists
     const foundUser = await User.findOne({
       $or: [{ email }],
     });
@@ -32,11 +36,14 @@ export async function POST(request: Request) {
       }
     }
 
+    // Encrypt the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate the verification token and expiration date
     const verificationToken = uuidv4();
     const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    // Send the confirmation email
     const confirmationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/confirm?token=${verificationToken}`;
     await transporter.sendMail({
       from: "no-reply@portman-demo.tech",
@@ -45,6 +52,8 @@ export async function POST(request: Request) {
       text: `Please confirm your email by clicking this link: ${confirmationLink}`,
       html: `<p>Please confirm your email by clicking <a href="${confirmationLink}">this link</a>.</p>`,
     });
+
+    // Create new user in the database
     const newUser = await User.create({
       first_name,
       last_name,

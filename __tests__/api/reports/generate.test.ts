@@ -1,3 +1,4 @@
+// Tests F8 and F12 requirements
 import { jest } from "@jest/globals";
 
 jest.mock("next-auth", () => ({
@@ -70,6 +71,26 @@ describe("POST /api/reports/generate", () => {
         to: now.toISOString(),
       },
       name: "Test Report",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+    expect(() => JSON.parse(text)).not.toThrow();
+  });
+
+  it("successfully generates an AI report", async () => {
+    mockSession(getMockSession());
+    const now = new Date();
+    const req = createMockRequestWithJson({
+      selectedPortfolios: [new mongoose.Types.ObjectId().toString()],
+      type: "ai_account_summary",
+      format: "json",
+      dateRange: {
+        from: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
+        to: now.toISOString(),
+      },
+      name: "AI Summary Report",
     });
     const res = await POST(req);
     expect(res.status).toBe(200);

@@ -1,3 +1,4 @@
+//Tests F11 requirement
 import { GET } from "@/app/api/currency/get/route";
 import CurrencyRate from "@/models/CurrencyRate";
 import { NextRequest } from "next/server";

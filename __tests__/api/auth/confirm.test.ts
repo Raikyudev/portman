@@ -1,3 +1,4 @@
+//Tests F1 and NF5 requirements
 import { GET } from "@/app/api/auth/confirm/route";
 import User from "@/models/User";
 import { NextRequest } from "next/server";

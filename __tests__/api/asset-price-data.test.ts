@@ -1,3 +1,4 @@
+//Tests F4 requirement
 import { GET } from "@/app/api/asset-price-data/route";
 import { dbConnect, closeDatabase } from "@/lib/mongodb";
 import Asset from "@/models/Asset";

@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   await dbConnect();
+
+  // Get symbol from the url
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get("symbol");
 
@@ -14,9 +16,11 @@ export async function GET(request: Request) {
     );
   }
   try {
+    // Search for the asset by symbol
     const asset = await Asset.findOne({ symbol: symbol.toUpperCase() });
     console.log(`Asset search for ${symbol}:`, asset ? "Found" : "Not found");
 
+    // Return asset price if found
     if (asset && asset.price) {
       return NextResponse.json({
         symbol: asset.symbol,

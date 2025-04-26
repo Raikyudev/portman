@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(request: Request) {
+  // Get query parameters
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("query")?.trim() || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
 
   await dbConnect();
 
+  // Get preferred currency from session
   const session = await getServerSession(authOptions);
   const userCurrency = session?.user?.preferences?.currency || "USD"; // Fallback to USD
 
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
     let assets: IAsset[];
     let total: number;
 
+    // If query comes from market page and no search parameter is provided
     if (specialCase) {
       const marketData = await broadMarketFetch({
         page,
@@ -46,6 +49,7 @@ export async function GET(request: Request) {
       assets = marketData.assets;
       total = marketData.total;
     } else {
+      // Else search and sort assets from the database
       const result = await Asset.aggregate(
         [
           ...(query
@@ -125,6 +129,7 @@ export async function GET(request: Request) {
       assets = data.assets as IAsset[];
       total = data.total || 0;
 
+      // Filter out assets without basic fields
       assets = assets.filter((asset) => {
         if (!asset.symbol || !asset.name) {
           console.warn(
@@ -147,6 +152,7 @@ export async function GET(request: Request) {
     }
 
     let enrichedAssets: IExtendedAsset[];
+    // Add live prices and price change if the search comes from market page
     if (market) {
       enrichedAssets = await Promise.all(
         assets.map(async (asset: IAsset): Promise<IExtendedAsset> => {

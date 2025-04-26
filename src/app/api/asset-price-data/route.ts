@@ -1,15 +1,18 @@
-// pages/api/asset-price-data/route.ts
+// Route for asset price chart component
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import Asset from "@/models/Asset";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getFullPriceHistory } from "@/lib/stockPrices"; // Updated import
+import { getFullPriceHistory } from "@/lib/stockPrices";
 import { getTodayDate } from "@/lib/utils";
 import { Types } from "mongoose";
 import yahooFinance from "yahoo-finance2";
 
+// Remove yahoofinance validation logging
 yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
+
 interface PriceData {
   date: string;
   price: number;
@@ -25,12 +28,14 @@ export async function GET(request: Request) {
   await dbConnect();
 
   try {
+    // Check authentication
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
       console.log("Unauthorized session in GET:", { session });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get parameters from url
     const { searchParams } = new URL(request.url);
     const assetId = searchParams.get("asset_id");
     const period = searchParams.get("period") as "W" | "M" | "YTD" | "Y" | null;
@@ -42,6 +47,7 @@ export async function GET(request: Request) {
       );
     }
 
+    // Find asset in the DB, return error if not found
     const asset = await Asset.findById(assetId);
     if (!asset) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
@@ -50,6 +56,7 @@ export async function GET(request: Request) {
     const endDate = getTodayDate();
     let startDate: string;
 
+    // Set price date range based on the selected period
     const today = new Date(endDate);
     switch (period?.toUpperCase()) {
       case "W":
@@ -79,31 +86,20 @@ export async function GET(request: Request) {
         break;
     }
 
-    // Optionally constrain startDate for YTD or default cases
-    const earliestTransactionDate = "2025-01-01"; // Adjust based on your data
-    if (period?.toUpperCase() === "YTD" || !period) {
-      startDate = new Date(
-        Math.max(
-          new Date(startDate).getTime(),
-          new Date(earliestTransactionDate).getTime(),
-        ),
-      )
-        .toISOString()
-        .split("T")[0];
-    }
-
-    // Use the new getFullPriceHistory function
+    // Fetch price history between startDate and endDate
     let priceHistory = await getFullPriceHistory(
       asset.symbol,
       startDate,
       endDate,
     );
 
+    // Filter out any zero-price entries
     priceHistory = priceHistory.filter((entry: PriceData) => entry.price !== 0);
+
     const responseData: AssetPriceResponse = {
       name: asset.name,
       symbol: asset.symbol,
-      priceHistory: priceHistory, // Directly use the array from getFullPriceHistory
+      priceHistory,
     };
 
     return NextResponse.json({ data: responseData }, { status: 200 });

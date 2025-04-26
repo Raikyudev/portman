@@ -7,6 +7,7 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Get token and new password from the request
     const { token, newPassword } = await request.json();
 
     if (!token || !newPassword) {
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if the token is valid
     const user = await User.findOne({
       resetToken: token,
       resetTokenExpires: { $gt: new Date() },
@@ -28,6 +30,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Update password and remove the token fields
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetToken = undefined;
     user.resetTokenExpires = undefined;

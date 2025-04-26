@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getAssetDetailsData } from "@/lib/stockPrices";
 import yahooFinance from "yahoo-finance2";
 
+// Disable yahoo validation error logging
 yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
 
 interface AssetDetailsData {
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
   await dbConnect();
 
   try {
+    // Check user session authentication
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
       console.log("Unauthorized session in GET:", { session });
@@ -38,6 +40,7 @@ export async function GET(request: Request) {
 
     console.log(`Fetching details for symbol: ${symbol}`);
 
+    // Fetch information using the symbol
     const details = await getAssetDetailsData(symbol);
 
     const responseData: AssetDetailsData = {

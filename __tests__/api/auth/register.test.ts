@@ -1,3 +1,4 @@
+// Tests F1 and NF1 requirements
 import { NextRequest, NextResponse } from "next/server";
 import { POST } from "@/app/api/auth/register/route";
 import User from "@/models/User";
@@ -186,5 +187,31 @@ describe("User Registration API", () => {
 
     expect(response.status).toBe(500);
     expect(responsejson.error).toContain("Error occurred:");
+  });
+
+  it("should store the password encrypted in the database", async () => {
+    __mockSendMail.mockResolvedValue({});
+
+    const request = new NextRequest(
+      new Request("http://localhost/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          first_name: "Secure",
+          last_name: "Test",
+          email: "securetest@gmail.com",
+          password: "plaintextpassword",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const response = (await POST(request)) as NextResponse;
+    expect(response.status).toBe(201);
+
+    const createdUser = await User.findOne({ email: "securetest@gmail.com" });
+    expect(createdUser).toBeDefined();
+    expect(createdUser?.password).toBeDefined();
+    expect(createdUser?.password).not.toBe("plaintextpassword");
+    expect(createdUser?.password.startsWith("$2a$")).toBe(true);
   });
 });
