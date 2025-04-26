@@ -1,3 +1,4 @@
+// Popout Window component
 
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export default function PopoutWindow({
   onClose,
   children,
 }: PopoutWindowProps) {
+  // Don't render if not open
   if (!isOpen) return null;
 
   return (

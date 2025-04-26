@@ -1,3 +1,5 @@
+// Fetch asset details
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
@@ -24,7 +26,6 @@ export async function GET(request: Request) {
     // Check user session authentication
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
-      console.log("Unauthorized session in GET:", { session });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -37,8 +38,6 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
-
-    console.log(`Fetching details for symbol: ${symbol}`);
 
     // Fetch information using the symbol
     const details = await getAssetDetailsData(symbol);

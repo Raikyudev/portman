@@ -1,3 +1,5 @@
+//Route to add buy or sell transaction to a portfolio
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongodb";
@@ -21,22 +23,24 @@ const transactionSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // Authenticate user
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || !(session.user as { id?: string }).id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Validate request
   const body = await request.json();
   const result = transactionSchema.safeParse(body);
 
   if (!result.success) {
-    console.log("Validation Error: ", result.error.format());
     return NextResponse.json({ error: result.error.format() }, { status: 400 });
   }
 
   await dbConnect();
 
+  // Verify portfolio ownership
   const portfolio = await Portfolio.findOne({
     _id: result.data.portfolio_id,
     user_id: (session.user as { id: string }).id,
@@ -49,6 +53,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Verify asset exists
   const asset = await Asset.findById(
     mongoose.Types.ObjectId.createFromHexString(
       result.data.asset_id.toString(),
@@ -58,15 +63,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
 
+  // Fetch exchange rate and check if the asset is already in the portfolio
   const existingPortfolioAsset = await PortfolioAsset.findOne({
     portfolio_id: result.data.portfolio_id,
     asset_id: result.data.asset_id,
   });
   const exchange_rate = (await getExchangeRate(result.data.currency)).rate;
+
+  // Handle buy and sell transactions
   if (result.data.tx_type === "buy") {
     const usd_price_per_unit = result.data.price_per_unit / exchange_rate;
 
     if (existingPortfolioAsset) {
+      // Update average buy price and quantity
       const totalOldValue =
         existingPortfolioAsset.quantity * existingPortfolioAsset.avg_buy_price;
       const totalNewValue = result.data.quantity * usd_price_per_unit;
@@ -79,6 +88,7 @@ export async function POST(request: Request) {
 
       await existingPortfolioAsset.save();
     } else {
+      // Add new asset to portfolio
       const newPortfolioAsset = new PortfolioAsset({
         portfolio_id: result.data.portfolio_id,
         asset_id: result.data.asset_id,
@@ -102,6 +112,7 @@ export async function POST(request: Request) {
 
     existingPortfolioAsset.quantity -= result.data.quantity;
 
+    // Remove portfolio asset if quantity becomes 0
     if (existingPortfolioAsset.quantity === 0) {
       await existingPortfolioAsset.deleteOne({
         _id: existingPortfolioAsset._id,

@@ -1,3 +1,5 @@
+// Portfolio page
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -30,9 +32,11 @@ export default function Page() {
     percentage: 0,
     amount: 0,
   });
+
   const searchParams = useSearchParams();
   const portfolioId = searchParams.get("id");
-  console.log("Portfolio ID:", portfolioId);
+
+  // Fetch portfolios and their history
   const fetchPortfoliosAndHistory = useCallback(async () => {
     try {
       const queryParam = portfolioId ? `?id=${portfolioId}` : "";
@@ -41,15 +45,13 @@ export default function Page() {
       });
       if (!portfolioResponse.ok) {
         console.error("Error fetching portfolios");
-        console.error("Failed to fetch portfolios");
       }
       const portfolioDataFull = await portfolioResponse.json();
-      console.log("Raw Portfolio Data:", portfolioDataFull);
+
       const portfolioData = portfolioId
         ? portfolioDataFull.portfolios
         : portfolioDataFull;
       const portfolioDataId = portfolioDataFull.portfolioId || false;
-
       const updatedPortfolios: IExtendedPortfolio[] = await Promise.all(
         portfolioData.map(async (portfolio: IExtendedPortfolio) => {
           const historyResponse = await fetch(
@@ -66,7 +68,6 @@ export default function Page() {
           }
           const { data: historyData }: { data: IndividualHistoryEntry[] } =
             await historyResponse.json();
-          console.log(`History for portfolio ${portfolio._id}:`, historyData);
 
           const latestValue =
             historyData.length > 0
@@ -76,28 +77,17 @@ export default function Page() {
         }),
       );
 
-      // Step 3: Sort portfolios by port_total_value in descending order
+      // Sort portfolios by port_total_value in descending order
       updatedPortfolios.sort((a, b) => b.port_total_value - a.port_total_value);
 
-      // Step 4: Update the portfolios state
       setPortfolios(updatedPortfolios);
-      console.log(
-        "Updated Portfolios (sorted by total value):",
-        updatedPortfolios,
-      );
 
-      // Step 5: Set the expanded portfolio
+      // Set expanded portfolio
       if (portfolioDataId) {
-        console.log("Looking for new portfolio with ID:", portfolioDataId);
-        console.log(
-          "Portfolio IDs in updatedPortfolios:",
-          updatedPortfolios.map((p) => p._id),
-        );
         const newPortfolio = updatedPortfolios.find(
           (p) => String(p._id) === String(portfolioDataId),
         );
         if (newPortfolio) {
-          console.log(`Selecting new portfolio: ${portfolioDataId}`);
           setExpandedPortfolio(portfolioDataId);
         } else {
           console.error(`New portfolio with ID ${portfolioDataId} not found`);
@@ -115,17 +105,16 @@ export default function Page() {
     }
   }, [portfolioId]);
 
+  // Load portfoilios on page load
   useEffect(() => {
     fetchPortfoliosAndHistory();
   }, [fetchPortfoliosAndHistory, portfolioId]);
 
   const handlePerformanceUpdate = useCallback(
     (value: number, profitData: { percentage: number; amount: number }) => {
-      console.log("Performance Update - Value:", value, "Profit:", profitData);
       setPortfolioValue(value);
       setProfit(profitData);
 
-      // Update the port_total_value for the currently expanded portfolio
       if (expandedPortfolio) {
         setPortfolios((prevPortfolios) => {
           const updated = prevPortfolios.map((p) =>
@@ -133,7 +122,7 @@ export default function Page() {
               ? ({ ...p, port_total_value: value } as IExtendedPortfolio)
               : p,
           );
-          // Re-sort after updating the value
+
           return updated.sort(
             (a, b) => b.port_total_value - a.port_total_value,
           );
@@ -143,14 +132,7 @@ export default function Page() {
     [expandedPortfolio],
   );
 
-  useEffect(() => {
-    console.log(
-      "Current State - Portfolios:",
-      portfolios,
-      "Expanded:",
-      expandedPortfolio,
-    );
-  }, [portfolios, expandedPortfolio]);
+  useEffect(() => {}, [portfolios, expandedPortfolio]);
 
   if (loading)
     return <div className="text-white">Loading portfolio data...</div>;

@@ -1,3 +1,5 @@
+// Top Holdings component
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -33,6 +35,7 @@ export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
   const [formattedValues, setFormattedValues] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch top holdings once the session is authenticated
   useEffect(() => {
     if (status === "loading") return;
 
@@ -68,6 +71,7 @@ export default function TopHoldings({ portfolioId }: TopHoldingsProps = {}) {
     fetchTopHoldings();
   }, [status, session, portfolioId]);
 
+  // Convert values to user's preferred currency
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading || topHoldings.length === 0) return;

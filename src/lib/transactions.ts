@@ -1,28 +1,29 @@
+// Get transactions function
+
 import Transaction from "@/models/Transaction";
 import { dbConnect } from "@/lib/mongodb";
 import mongoose from "mongoose";
 
+// Fetch transactions linked to a portfolio with asset symbols
 export async function getTransactions(portfolioId: string) {
   await dbConnect();
 
-  console.log("Fetching transactions for portfolio:" + portfolioId);
-
-  const transactions = await Transaction.aggregate([
+  return Transaction.aggregate([
     {
       $match: {
-        portfolio_id: mongoose.Types.ObjectId.createFromHexString(portfolioId),
+        portfolio_id: mongoose.Types.ObjectId.createFromHexString(portfolioId), // Filter by portfolio ID
       },
     },
     {
       $lookup: {
-        from: "assets",
-        localField: "asset_id",
+        from: "assets", // Join with assets collection
+        localField: "asset_id", // Link on asset ID
         foreignField: "_id",
         as: "assetDetails",
       },
     },
     {
-      $unwind: "$assetDetails",
+      $unwind: "$assetDetails", // Flatten assetDetails array
     },
     {
       $project: {
@@ -33,11 +34,8 @@ export async function getTransactions(portfolioId: string) {
         quantity: 1,
         price_per_unit: 1,
         tx_date: 1,
-        "asset_details.symbol": "$assetDetails.symbol",
+        "asset_details.symbol": "$assetDetails.symbol", // Only include asset symbol
       },
     },
   ]);
-  console.log("Transactions found:", transactions);
-
-  return transactions;
 }

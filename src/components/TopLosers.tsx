@@ -1,3 +1,5 @@
+// Top Losers component
+
 "use client";
 
 import {
@@ -28,6 +30,7 @@ export default function TopLosers({ topLosers }: TopLosersProps) {
   const { preferredCurrency, isLoading, rates } = useCurrency();
   const [formattedPrices, setFormattedPrices] = useState<string[]>([]);
 
+  // Convert values to user's preferred currency
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading || topLosers.length === 0) return;

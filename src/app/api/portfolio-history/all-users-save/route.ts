@@ -1,3 +1,5 @@
+// Route for saving all users histories
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory, { IPortfolioHistory } from "@/models/PortfolioHistory";
@@ -18,6 +20,7 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Verify API key
     const apiKey =
       request.headers.get("Authorization")?.replace("Bearer ", "") || "";
     const expectedApiKey = process.env.PORT_HISTORY_KEY;
@@ -29,6 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find all portfolios
     const portfolios = await Portfolio.find({}).select("_id user_id");
     if (!portfolios || portfolios.length === 0) {
       return NextResponse.json(
@@ -37,6 +41,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Fetch all transactions grouped by portfolio
     const allTransactionsByPortfolio: Record<string, IExtendedTransaction[]> =
       {};
     for (const portfolio of portfolios) {
@@ -53,6 +58,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find date range for history valuation calculation
     const earliestTransactionDate = new Date(
       Math.min(...allTransactions.map((tx) => new Date(tx.tx_date).getTime())),
     )
@@ -61,6 +67,7 @@ export async function POST(request: Request) {
     const endDate = getTodayDate();
     const allDates = getDateRange(earliestTransactionDate, endDate);
 
+    // Find earliest transaction date per symbol
     const symbolEarliestDates = allTransactions.reduce(
       (acc, tx) => {
         const symbol = tx.asset_details.symbol;
@@ -73,6 +80,7 @@ export async function POST(request: Request) {
       {} as Record<string, string>,
     );
 
+    // Pre-fetch stock prices
     const uniqueSymbols = new Set(
       allTransactions.map((tx) => tx.asset_details.symbol),
     );
@@ -91,6 +99,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // Process each portfolio
     const overallResult: IPortfolioHistory[] = [];
     for (const portfolio of portfolios) {
       const portfolioId = portfolio._id.toString();
@@ -100,6 +109,7 @@ export async function POST(request: Request) {
         continue;
       }
 
+      // Find existing history dates
       const existingHistory = await PortfolioHistory.find({
         portfolio_id: portfolioId,
       }).sort({ port_history_date: 1 });
@@ -116,6 +126,7 @@ export async function POST(request: Request) {
         continue;
       }
 
+      // Calculate missing dates
       for (const date of datesToCalculate) {
         const holdingsForDate = await calculateStockHoldings(
           transactions,
@@ -125,6 +136,7 @@ export async function POST(request: Request) {
           continue;
         }
 
+        // Fetch missing prices if needed
         const symbolsToPrice = Object.keys(holdingsForDate);
         const missingSymbols = symbolsToPrice.filter(
           (symbol) =>
@@ -164,6 +176,8 @@ export async function POST(request: Request) {
           portfolio_id: portfolioId,
           port_history_date: new Date(date),
         });
+
+        // Save or update history entry
         if (!existing) {
           const newHistoryEntry = new PortfolioHistory({
             portfolio_id: portfolioId,

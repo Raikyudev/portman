@@ -1,3 +1,5 @@
+// Update portfolio name and description route
+
 import { dbConnect } from "@/lib/mongodb";
 import Portfolio from "@/models/Portfolio";
 import { NextResponse } from "next/server";
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find portfolio and check ownership
     const portfolio = await Portfolio.findOne({
       _id: portfolioId,
       user_id: session.user.id,
@@ -33,6 +36,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Update portfolio details
     portfolio.name = name;
     portfolio.description = description || "";
     await portfolio.save();

@@ -1,3 +1,5 @@
+// Performance Chart
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -41,6 +43,7 @@ export default function PerformanceChart({
   const [formattedPortfolioValue, setFormattedPortfolioValue] = useState("");
   const [formattedProfitAmount, setFormattedProfitAmount] = useState("");
 
+  // Fetch portfolio historical data
   const fetchPortfolioHistory = useCallback(async () => {
     setError(null);
     try {
@@ -54,7 +57,7 @@ export default function PerformanceChart({
       }
 
       const { data }: { data: PortfolioHistoryEntry[] } = await response.json();
-      console.log("Portfolio History Data:", data);
+
       setPortfolioHistory(data || []);
 
       if (data && data.length > 0) {
@@ -68,7 +71,7 @@ export default function PerformanceChart({
 
         setPortfolioValue(latestValue);
         const profitData: ProfitData = {
-          percentage: Math.round(percentageChange * 100) / 100, // 2 decimal places
+          percentage: Math.round(percentageChange * 100) / 100,
           amount: Math.round(amountChange),
         };
         setProfit(profitData);
@@ -91,6 +94,7 @@ export default function PerformanceChart({
     fetchPortfolioHistory();
   }, [fetchPortfolioHistory]);
 
+  // Update currency formatting when values change
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading) return;
@@ -116,6 +120,7 @@ export default function PerformanceChart({
     value: entry.port_total_value,
   }));
 
+  // Custom tooltip for the chart
   const CustomTooltip = ({
     active,
     payload,

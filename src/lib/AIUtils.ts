@@ -1,3 +1,5 @@
+// AI Utility Functions
+
 import { getTodayPriceBySymbol } from "@/lib/stockPrices";
 import { PortfolioHoldings } from "@/types/portfolio";
 
@@ -9,6 +11,7 @@ export interface AIPrediction {
   justification?: string;
 }
 
+// Calls the Gemini API with a text prompt and returns the response
 async function callGeminiAPI(prompt: string): Promise<string> {
   const apiKey = process.env.AI_API_KEY;
   if (!apiKey) {
@@ -50,6 +53,7 @@ async function callGeminiAPI(prompt: string): Promise<string> {
   );
 }
 
+// Fetches AI price predictions for a list of symbols with optional justifications.
 export async function getAIPredictions(
   symbols: string[],
   currentPrices: Record<string, number>,
@@ -61,6 +65,7 @@ export async function getAIPredictions(
     const prompt = `Predict the 12-month price change percentage for ${symbol} stock. Provide a numerical percentage in the format: "X%".`;
     const response = await callGeminiAPI(prompt);
 
+    // Try to get a number from the AI's response
     const match = response.match(/-?\d+\.?\d*%$/);
     const predictedChange = match
       ? parseFloat(match[0].replace("%", ""))
@@ -69,8 +74,7 @@ export async function getAIPredictions(
     let currentPrice =
       currentPrices[symbol] ?? (await getTodayPriceBySymbol(symbol));
     if (currentPrice === 0) {
-      console.log(`No price available for ${symbol}, using default price`);
-      currentPrice = 50;
+      currentPrice = 50; // fallback if no price is found
     }
 
     const predictedPrice12Months = currentPrice * (1 + predictedChange / 100);
@@ -86,20 +90,20 @@ export async function getAIPredictions(
   return predictions;
 }
 
+// Suggests 3 stocks that are not in holdings
+
 export async function getAIRecommendations(
   holdings: Record<string, PortfolioHoldings>,
   currentHoldingsPredictions: AIPrediction[] = [],
 ): Promise<AIPrediction[]> {
+  // Convert holdings to synmbol array
   const currentHoldings =
     holdings && Object.keys(holdings).length > 0
       ? Object.values(holdings).flatMap((h) => Object.keys(h.stockHoldingsTo))
       : [];
 
   if (currentHoldings.length === 0) {
-    console.log(
-      "No current holdings provided for recommendations, using default symbols",
-    );
-    currentHoldings.push("AAPL", "MSFT", "VTI");
+    currentHoldings.push("AAPL", "MSFT", "VTI"); // fallback defaults
   }
 
   const currentHoldingsSummary = currentHoldingsPredictions
@@ -121,7 +125,7 @@ export async function getAIRecommendations(
       (acc, p) => acc + p.predictedChangePercentage,
       0,
     ) / currentHoldingsPredictions.length;
-
+  // AI prompts enforcing correct output format
   const prompt = `Here are the current holdings and their predicted price changes for the next 12 months: ${currentHoldingsSummary}. Based on this, suggest 3 other stocks not in the attached list (not funds) that each have a better predicted percentage gain than the current holdings. The recommended stocks MUST:
     1. Only include stocks with a higher predicted % gain than at least ${minimumPerformance.toFixed(
       2,
@@ -142,8 +146,8 @@ The price growth predictions don't have to be even numbers, it could be somethin
 Don't leave a gap (So no more than one new line) between the sections of your response.`;
 
   const response = await callGeminiAPI(prompt);
-  console.log("Recommendation response: ", response);
 
+  // Parse the response
   const lines = response
     .split("\n")
     .map((line: string) => line.trim())
@@ -156,12 +160,10 @@ Don't leave a gap (So no more than one new line) between the sections of your re
     .slice(0, 3);
 
   if (suggestedSymbols.length === 0) {
-    console.log(
-      "No valid suggested symbols received, using default suggestions",
-    );
     suggestedSymbols.push("AAPL", "MSFT", "NVDA");
   }
 
+  // Get justifications for each recommendation
   let justifications: string[] = [];
   let growthPercentages: Record<string, number> = {};
 
@@ -173,6 +175,7 @@ Don't leave a gap (So no more than one new line) between the sections of your re
     return "No reasoning provided";
   });
 
+  // Get % growth predictions from the last line of the response
   const percentageLine: string = lines[4];
   if (percentageLine) {
     const percentageParts: string[] = percentageLine
@@ -199,16 +202,14 @@ Don't leave a gap (So no more than one new line) between the sections of your re
       });
     });
   }
-
+  // Fallback if growth percentage is missing
   suggestedSymbols.forEach((symbol: string) => {
     if (!(symbol in growthPercentages)) {
       growthPercentages[symbol] = 0;
     }
   });
 
-  console.log("Symbols:", suggestedSymbols);
-  console.log("Justifications:", justifications);
-  console.log("Growth Percentages:", growthPercentages);
+  // Get today's price for each recommendation
   const pricePromises = suggestedSymbols.map(async (symbol) => ({
     symbol,
     price: await getTodayPriceBySymbol(symbol),
@@ -222,6 +223,7 @@ Don't leave a gap (So no more than one new line) between the sections of your re
     {} as Record<string, number>,
   );
 
+  // Return final prediction object
   return suggestedSymbols.map((symbol, index) => ({
     symbol,
     currentPrice: currentPrices[symbol] || 0,

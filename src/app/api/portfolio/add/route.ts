@@ -1,3 +1,5 @@
+// Create portfolio route
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongodb";
@@ -11,12 +13,13 @@ const portfolioSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // Verify session
   const session = await getServerSession(authOptions);
-
   if (!session || !session.user || !(session.user as { id?: string }).id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Validate request
   const body = await request.json();
   const result = portfolioSchema.safeParse(body);
 
@@ -25,6 +28,8 @@ export async function POST(request: Request) {
   }
 
   await dbConnect();
+
+  // Create new portfolio
   const portfolio = new Portfolio({
     name: result.data.name,
     description: result.data.description || "",
@@ -38,8 +43,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  // Verify user session
   const session = await getServerSession(authOptions);
-  console.log("Session Data: ", session);
   if (!session || !session.user || !(session.user as { id?: string }).id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

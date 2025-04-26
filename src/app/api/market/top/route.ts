@@ -1,9 +1,10 @@
-// pages/api/market/top/route.ts
+// Fetch top gainers and losers data
 import { NextResponse } from "next/server";
 import yahooFinance from "yahoo-finance2";
 
 export async function GET() {
   try {
+    // Fetch top 10 daily gainers
     const gainersResponse = await yahooFinance.dailyGainers(
       { count: 10 },
       { validateResult: false },
@@ -23,6 +24,7 @@ export async function GET() {
       }),
     );
 
+    // Fetch top 10 daily losers
     const losersResponse = await yahooFinance.screener(
       { scrIds: "day_losers", count: 10 },
       { validateResult: false },

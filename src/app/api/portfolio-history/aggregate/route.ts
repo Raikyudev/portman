@@ -1,3 +1,5 @@
+// route for aggregated portfolio history for a user
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory from "@/models/PortfolioHistory";
@@ -19,6 +21,7 @@ export async function GET(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate session
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,6 +31,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range");
 
+    // Find user's portfolios
     const portfolios = await Portfolio.find({ user_id: userId }).select("_id");
     if (!portfolios || portfolios.length === 0) {
       return NextResponse.json({ data: [] }, { status: 200 });
@@ -37,6 +41,7 @@ export async function GET(request: Request) {
       portfolio._id.toString(),
     );
 
+    // Fetch all transactions across all portfolios
     const allTransactions: IExtendedTransaction[] = [];
     for (const portfolio of portfolios) {
       const transactions = (await getTransactions(
@@ -45,6 +50,7 @@ export async function GET(request: Request) {
       allTransactions.push(...transactions);
     }
 
+    // Find earliest transaction date
     const earliestTransactionDate =
       allTransactions.length > 0
         ? new Date(
@@ -57,6 +63,7 @@ export async function GET(request: Request) {
         : getTodayDate();
     const endDate = getTodayDate();
 
+    // Find start date based on requested range
     let rangeStartDate: string;
     if (range) {
       const today = new Date(endDate);
@@ -88,6 +95,7 @@ export async function GET(request: Request) {
       rangeStartDate = earliestTransactionDate;
     }
 
+    // Start date considering range and earliest transaction
     const effectiveStartDate = range
       ? new Date(
           Math.max(
@@ -99,8 +107,10 @@ export async function GET(request: Request) {
           .split("T")[0]
       : earliestTransactionDate;
 
+    // Generate list of all dates in the range
     const allDates = getDateRange(effectiveStartDate, endDate);
 
+    // Fetch portfolio history for the user
     const history = await PortfolioHistory.find({
       portfolio_id: { $in: portfolioIds },
       port_history_date: {
@@ -109,6 +119,7 @@ export async function GET(request: Request) {
       },
     }).sort({ port_history_date: 1 });
 
+    // Find missing dates not yet calculated
     const existingDates = new Set(
       history.map(
         (entry) => entry.port_history_date.toISOString().split("T")[0],
@@ -118,6 +129,7 @@ export async function GET(request: Request) {
       .filter((date) => new Date(date) >= new Date(effectiveStartDate))
       .filter((date) => !existingDates.has(date));
 
+    // If missing dates exist, call /aggregate-save
     if (missingDates.length > 0) {
       const cookie = (await cookies()).get("next-auth.session-token");
       const response = await fetch(
@@ -136,6 +148,8 @@ export async function GET(request: Request) {
           }),
         },
       );
+
+      // Refresh history if saved correctly
       if (response.ok) {
         const updatedHistory = await PortfolioHistory.find({
           portfolio_id: { $in: portfolioIds },
@@ -155,6 +169,7 @@ export async function GET(request: Request) {
       }
     }
 
+    // Aggregate total portfolio value by date
     const aggregatedHistory: AggregatedHistoryEntry[] = [];
     const dateValues = new Map<string, number>();
     history.forEach((entry) => {
@@ -163,6 +178,7 @@ export async function GET(request: Request) {
       dateValues.set(dateStr, currentValue + entry.port_total_value);
     });
 
+    // Create final response only including dates after first transaction
     allDates.forEach((dateStr) => {
       if (new Date(dateStr) >= new Date(earliestTransactionDate)) {
         const existingValue = dateValues.get(dateStr) || 0;
@@ -174,6 +190,7 @@ export async function GET(request: Request) {
       }
     });
 
+    // Sort by date
     aggregatedHistory.sort(
       (a, b) =>
         new Date(a.port_history_date).getTime() -

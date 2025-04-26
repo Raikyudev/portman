@@ -1,4 +1,5 @@
-// pages/api/portfolio-history/individual/route.ts
+// Route to fetch individual portfolio history
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory from "@/models/PortfolioHistory";
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
       );
     }
 
+    // Verify portfolio ownership
     const portfolio = await Portfolio.findOne({
       _id: new Types.ObjectId(portfolioId),
       user_id: userId,
@@ -48,6 +51,7 @@ export async function GET(request: Request) {
       );
     }
 
+    // Fetch transactions for portfolio
     const transactions: IExtendedTransaction[] = (await getTransactions(
       portfolioId,
     )) as IExtendedTransaction[];
@@ -56,6 +60,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: [] }, { status: 200 });
     }
 
+    // Find effective date range
     const earliestTransactionDate = new Date(
       Math.min(...transactions.map((tx) => new Date(tx.tx_date).getTime())),
     )
@@ -107,6 +112,7 @@ export async function GET(request: Request) {
 
     const allDates = getDateRange(effectiveStartDate, endDate);
 
+    // Check for missing historical entries
     const existingHistory = await PortfolioHistory.find({
       portfolio_id: new Types.ObjectId(portfolioId),
       port_history_date: {
@@ -124,6 +130,7 @@ export async function GET(request: Request) {
       .filter((date) => new Date(date) >= new Date(effectiveStartDate))
       .filter((date) => !existingDates.has(date));
 
+    // Trigger save if missing dates
     if (missingDates.length > 0) {
       const response = await fetch(
         `${request.url.replace("/individual", "/individual-save")}`,
@@ -148,6 +155,7 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fetch updated history
     const updatedHistory = await PortfolioHistory.find({
       portfolio_id: new Types.ObjectId(portfolioId),
       port_history_date: {
@@ -156,6 +164,7 @@ export async function GET(request: Request) {
       },
     }).sort({ port_history_date: 1 });
 
+    // Aggregate history entries
     const individualHistory: IndividualHistoryEntry[] = [];
     const dateValues = new Map<string, number>();
     updatedHistory.forEach((entry) => {

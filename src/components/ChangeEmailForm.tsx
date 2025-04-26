@@ -1,3 +1,5 @@
+// Change Email Form component
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { useSession, signIn } from "next-auth/react";
 
+// Validation schema for email and password
 const schema = z.object({
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   password: z.string().min(1, "Password is required to confirm changes"),
@@ -27,10 +30,13 @@ interface ChangeEmailFormProps {
 
 export function ChangeEmailForm({ onClose }: ChangeEmailFormProps) {
   const { update } = useSession();
+
+  // Initialise form
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
+  // Handle form submit
   const onSubmit = async (data: FormData) => {
     try {
       const response = await fetch("/api/user/change-details", {
@@ -47,6 +53,8 @@ export function ChangeEmailForm({ onClose }: ChangeEmailFormProps) {
         form.setError("root", { message: error.error });
       } else {
         const result = await response.json();
+
+        // Update session after changing email
         await update({
           user: {
             email: result.user.email,
@@ -55,6 +63,7 @@ export function ChangeEmailForm({ onClose }: ChangeEmailFormProps) {
           },
         });
 
+        // Re-sign in with the new email
         await signIn("credentials", {
           email: data.email,
           password: data.password,

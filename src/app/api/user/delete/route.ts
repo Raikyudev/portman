@@ -1,3 +1,5 @@
+// Route to delete user's account
+
 import { dbConnect } from "@/lib/mongodb";
 import User from "@/models/User";
 import Portfolio from "@/models/Portfolio";
@@ -15,11 +17,13 @@ export async function DELETE(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get password from request
     const { password } = await request.json();
 
     if (!password) {
@@ -29,11 +33,13 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Find user in the database
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
@@ -41,21 +47,20 @@ export async function DELETE(request: Request) {
 
     const userId = user._id;
 
+    // Fetch and delete related portfolios
     const portfolios = await Portfolio.find({ user_id: userId });
     const portfolioIds = portfolios.map((portfolio) => portfolio._id);
 
     await PortfolioAsset.deleteMany({ portfolio_id: { $in: portfolioIds } });
-
     await PortfolioHistory.deleteMany({ portfolio_id: { $in: portfolioIds } });
-
     await Transaction.deleteMany({ portfolio_id: { $in: portfolioIds } });
-
-    await Report.deleteMany({ user_id: userId });
-
     await Portfolio.deleteMany({ user_id: userId });
 
+    // Delete related reports and watchlist
+    await Report.deleteMany({ user_id: userId });
     await Watchlist.deleteMany({ user_id: userId });
 
+    // Delete user account
     await User.deleteOne({ _id: userId });
 
     return NextResponse.json(

@@ -1,3 +1,5 @@
+// Route that runs the fetchAssets scripts which saves all assets to the database
+
 import { NextResponse } from "next/server";
 import fetchAssets from "@/lib/fetchAssets";
 import { dbConnect, closeDatabase } from "@/lib/mongodb";

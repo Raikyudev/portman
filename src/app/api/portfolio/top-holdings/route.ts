@@ -1,10 +1,12 @@
+// Fetch user's top holdings route
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongodb";
 import Portfolio from "@/models/Portfolio";
 import PortfolioAsset from "@/models/PortfolioAsset";
-import PortfolioHistory from "@/models/PortfolioHistory"; // Import PortfolioHistory model
+import PortfolioHistory from "@/models/PortfolioHistory";
 import { IAsset } from "@/models/Asset";
 import mongoose from "mongoose";
 
@@ -22,7 +24,7 @@ export async function GET(request: Request) {
   await dbConnect();
 
   try {
-    // Step 1: Determine which portfolios to query
+    // Find which portfolio to query
     let portfolioIds: string[];
     if (portfolioId) {
       const portfolio = await Portfolio.findOne({
@@ -43,18 +45,18 @@ export async function GET(request: Request) {
       portfolioIds = portfolios.map((p) => p._id.toString());
     }
 
-    // Step 2: Fetch the most recent total portfolio value from PortfolioHistory
+    // Fetch latest portfolio value
     const getLatestPortfolioValue = async (ids: string[]): Promise<number> => {
-      const date = new Date(); // Start with today
-      const maxBacktrackDays = 30; // Limit to 30 days back (adjust as needed)
+      const date = new Date();
+      const maxBacktrackDays = 30;
       let daysBacktracked = 0;
       let totalValue = 0;
 
       while (totalValue === 0 && daysBacktracked <= maxBacktrackDays) {
         const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0); // Midnight
+        startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999); // End of day
+        endOfDay.setHours(23, 59, 59, 999);
 
         const history = await PortfolioHistory.aggregate([
           {
@@ -81,7 +83,6 @@ export async function GET(request: Request) {
           break;
         }
 
-        // Backtrack one day
         date.setDate(date.getDate() - 1);
         daysBacktracked++;
       }
@@ -91,10 +92,9 @@ export async function GET(request: Request) {
 
     const totalPortfolioValue = await getLatestPortfolioValue(portfolioIds);
     if (totalPortfolioValue === 0) {
-      return NextResponse.json({ data: [] }); // No historical data found
+      return NextResponse.json({ data: [] });
     }
 
-    // Step 3: Aggregate PortfolioAsset records with Asset data
     const portfolioAssets = await PortfolioAsset.aggregate([
       {
         $match: {
@@ -118,12 +118,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: [] });
     }
 
-    // Step 4: Transform data into holdings
+    // Build holdings map
     const holdingsMap = new Map<string, Holding>();
 
     portfolioAssets.forEach((pa) => {
       const asset = pa.asset as IAsset;
-      const value = pa.quantity * asset.price; // Current value based on latest price
+      const value = pa.quantity * asset.price;
 
       holdingsMap.set(asset._id.toString(), {
         id: asset._id.toString(),
@@ -131,11 +131,11 @@ export async function GET(request: Request) {
         symbol: asset.symbol,
         shares: pa.quantity,
         value: value,
-        percentage: 0, // Will calculate this using historical total
+        percentage: 0,
       });
     });
 
-    // Step 5: Calculate percentage of portfolio for each holding using historical total
+    // Calculate percentages based on portfolio total
     const holdings = Array.from(holdingsMap.values()).map((holding) => ({
       ...holding,
       percentage:
@@ -143,8 +143,8 @@ export async function GET(request: Request) {
           ? (holding.value / totalPortfolioValue) * 100
           : 0,
     }));
-    console.log("Holdings:", holdings.length);
-    // Step 6: Sort by value (descending) and limit to top holdings (e.g., top 5)
+
+    // Sort and limit results
     const topHoldings = holdings
       .sort((a, b) => b.value - a.value)
       .slice(0, limitAmount === 0 ? holdings.length : limitAmount)
@@ -164,7 +164,6 @@ export async function GET(request: Request) {
   }
 }
 
-// Define the shape of the response data to match TopHoldings component
 interface Holding {
   id: string;
   name: string;

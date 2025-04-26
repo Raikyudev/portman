@@ -1,3 +1,5 @@
+// Route to generate a new report
+
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { generatePDF } from "@/lib/reportUtils";
@@ -11,14 +13,13 @@ import { getServerExchangeRates } from "@/lib/currencyExchange";
 
 export async function POST(request: Request) {
   try {
-    console.log("Authenticating user...");
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
-      console.error("Authentication failed: Unauthorized");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("Parsing request payload...");
+    // Get parameters
     const {
       selectedPortfolios,
       type: reportType,
@@ -26,14 +27,6 @@ export async function POST(request: Request) {
       dateRange,
       name,
     } = await request.json();
-
-    console.log("Received payload:", {
-      selectedPortfolios,
-      reportType,
-      format,
-      dateRange,
-      name,
-    });
 
     if (!reportType || !format || !dateRange?.to || !name) {
       console.error("Validation failed: Missing required fields");
@@ -51,6 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate dates
     const toDateObj: Date = new Date(dateRange.to);
     let fromDateObj: Date | undefined;
 
@@ -80,10 +74,9 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("Connecting to database...");
     await dbConnect();
 
-    console.log("Validating portfolio IDs...");
+    // Validate portfolio IDs
     const portfolioIds = Array.isArray(selectedPortfolios)
       ? selectedPortfolios
       : [selectedPortfolios];
@@ -105,6 +98,7 @@ export async function POST(request: Request) {
       }
     });
 
+    // Create generation inputs
     const generationInputs = await createGenerationInputs({
       portfolio_ids: portfolioIds,
       report_type: reportType,
@@ -114,25 +108,21 @@ export async function POST(request: Request) {
 
     const preferredCurrency =
       (session.user as any).preferences?.currency || "USD";
-    console.log("User's preferred currency:", preferredCurrency);
 
-    console.log("Fetching server-side currency rates...");
     const currencyRates = await getServerExchangeRates(request);
 
-    console.log("Generating report file...");
+    // Generate report file
     const fileName = `${name}.${format}`;
     let mimeType, fileBuffer;
 
     switch (format) {
       case "json":
-        console.log("Generating JSON report...");
         fileBuffer = Buffer.from(JSON.stringify(generationInputs, null, 2));
         mimeType = "application/json";
         break;
 
       case "pdf":
       default:
-        console.log("Generating PDF report...");
         fileBuffer = await generatePDF(
           generationInputs,
           session.user.first_name || "User",
@@ -144,7 +134,7 @@ export async function POST(request: Request) {
         break;
     }
 
-    console.log("Saving report to database...");
+    // Save report metadata to the database
     const newReport = new Report({
       user_id: session.user.id,
       portfolio_ids: portfolioObjectIds,
@@ -158,13 +148,11 @@ export async function POST(request: Request) {
       file_name: fileName,
     });
 
-    console.log("Saving report with data:", newReport.toObject());
     await newReport.save();
 
-    console.log("Preparing response...");
     const resolvedFileBuffer = fileBuffer;
 
-    console.log("Report generated successfully:", fileName);
+    // Return generated file
     return new Response(resolvedFileBuffer, {
       headers: {
         "Content-Type": mimeType,

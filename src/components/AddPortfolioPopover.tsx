@@ -1,4 +1,5 @@
-// src/components/AddPortfolioPopover.tsx
+// Portfolio popup window
+
 "use client";
 
 import {
@@ -16,6 +17,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 
+// Form validation schema
 const portfolioSchema = z.object({
   name: z.string().min(3, "Portfolio name must be at least 3 characters long"),
   description: z.string().max(255, "Description is too long").optional(),
@@ -33,6 +35,7 @@ export default function AddPortfolioPopover({
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialise form
   const {
     register,
     handleSubmit,
@@ -45,11 +48,11 @@ export default function AddPortfolioPopover({
 
   const router = useRouter();
 
+  // Handle form submit
   const onSubmit = async (data: PortfolioFormData) => {
     setError(null);
-    console.log("Submitting form with data:", data);
+
     try {
-      console.log("Sending POST to /api/portfolio/add");
       const response = await fetch("/api/portfolio/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -57,33 +60,30 @@ export default function AddPortfolioPopover({
       });
 
       const result = await response.json();
-      console.log("API response:", result);
 
       if (!response.ok) {
         const errorMessage =
           result.error?.message || `HTTP error! Status: ${response.status}`;
         setError(errorMessage);
-        console.log("Error occurred:", errorMessage);
+
         return;
       }
 
-      // Successfully created portfolio
-      console.log("New portfolio ID:", result._id);
-
-      // Close the popover after callback
+      // Close popover and reset form
       setPopoverOpen(false);
       reset();
 
+      // Navigate to portfolio page
       router.push("/portfolio?id=" + result._id.toString());
 
+      // Refresh page
       setTimeout(() => {
         window.location.reload();
-      }, 1000); // Small delay to allow URL update
+      }, 1000);
     } catch (error) {
       const errorMessage =
         (error as Error).message || "An unexpected error occurred.";
       setError(errorMessage);
-      console.log("Error in onSubmit:", errorMessage);
       console.error("Error in onSubmit:", error);
     }
   };

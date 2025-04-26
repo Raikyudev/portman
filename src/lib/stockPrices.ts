@@ -1,3 +1,5 @@
+// Yahoo Finance API interaction file
+
 import yahooFinance from "yahoo-finance2";
 import { getDateRange } from "./utils";
 import {
@@ -10,6 +12,7 @@ interface PriceEntry {
   price: number;
 }
 
+// Validate if a symbol exists on Yahoo Finance
 async function isValidSymbol(symbol: string): Promise<boolean> {
   try {
     const quote = await yahooFinance.quote(symbol);
@@ -23,6 +26,7 @@ async function isValidSymbol(symbol: string): Promise<boolean> {
   }
 }
 
+// Fetch price history for all holdings between dates
 export async function getStockPrices(
   holdings: Record<string, number>,
   startDate: string,
@@ -45,6 +49,7 @@ export async function getStockPrices(
   const symbolQuotes: Map<string, any> = new Map();
   const validSymbols: string[] = [];
 
+  // Validate symboils and fetch quotes
   await Promise.all(
     symbols.map(async (symbol) => {
       if (await isValidSymbol(symbol)) {
@@ -61,11 +66,13 @@ export async function getStockPrices(
     return stockPrices;
   }
 
+  // Fetch historical prices
   const priceHistoryPromises = validSymbols.map((symbol) =>
     getFullPriceHistory(symbol, adjustedStartDate, adjustedEndDate),
   );
   const priceHistories = await Promise.all(priceHistoryPromises);
 
+  // Map prices into stockPrices per day
   for (let i = 0; i < validSymbols.length; i++) {
     const symbol = validSymbols[i];
     const history = priceHistories[i];
@@ -98,6 +105,7 @@ export async function getStockPrices(
 
   const lastKnownPrices: Record<string, number> = {};
 
+  // Fill missing prices using previous known prices
   for (const date of dateRange) {
     stockPrices[date] = stockPrices[date] || {};
 
@@ -124,6 +132,7 @@ export async function getStockPrices(
     }
   }
 
+  // Zero out invalid symbols
   symbols.forEach((symbol) => {
     if (!validSymbols.includes(symbol)) {
       dateRange.forEach((date) => {
@@ -136,6 +145,7 @@ export async function getStockPrices(
   return stockPrices;
 }
 
+// Build map from price histories
 function getPriceMapFromHistory(
   histories: PriceEntry[][],
   index: number,
@@ -147,6 +157,7 @@ function getPriceMapFromHistory(
   return priceMap;
 }
 
+// Fetch stock prices for a specific date
 export async function getStocksPriceForDay(
   holdings: Record<string, number>,
   targetDate: string,
@@ -160,9 +171,9 @@ export async function getStocksPriceForDay(
   }
 
   const symbols = Object.keys(holdings);
-  console.log("Validating symbols for getStocksPriceForDay:", symbols);
-
   const validSymbols: string[] = [];
+
+  // Validate symbols
   const validationPromises = symbols.map(async (symbol) => {
     const isValid = await isValidSymbol(symbol);
     if (isValid) {
@@ -175,12 +186,12 @@ export async function getStocksPriceForDay(
   await Promise.all(validationPromises);
 
   if (validSymbols.length === 0) {
-    console.log("No valid symbols found, returning stock prices with zeros");
     return stockPrices;
   }
 
   const processedSymbols = new Set<string>();
 
+  // Fetch prices
   await Promise.all(
     validSymbols.map(async (symbol) => {
       const price = await fetchPriceForDay(symbol, adjustedTargetDate);
@@ -194,6 +205,7 @@ export async function getStocksPriceForDay(
   return stockPrices;
 }
 
+// Try to fetch price for a day, fallback to closest previous price
 async function fetchPriceForDay(
   symbol: string,
   currentDate: string,
@@ -238,6 +250,7 @@ async function fetchPriceForDay(
   }
 }
 
+// Get today's price
 export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
   if (!(await isValidSymbol(symbol))) {
     console.warn(`Invalid symbol ${symbol}, returning 0`);
@@ -249,12 +262,8 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
     const currentPrice = quote.regularMarketPrice ?? 0;
 
     if (currentPrice > 0) {
-      console.log(
-        `Price for ${symbol} fetched from Yahoo Finance: ${currentPrice}`,
-      );
       return currentPrice;
     }
-    console.log(`Yahoo Finance returned no valid price for ${symbol}`);
   } catch (yahooError) {
     console.error(
       `Error fetching price from Yahoo Finance for ${symbol}:`,
@@ -262,6 +271,7 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
     );
   }
 
+  // Fallback API fetch
   try {
     const response = await fetch(
       `/api/assets/get-price?symbol=${encodeURIComponent(symbol)}`,
@@ -274,25 +284,16 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
     );
 
     if (!response.ok) {
-      console.log(
-        `Failed to fetch price for ${symbol} from /api/assets/get-price: ${response.status}`,
-      );
       console.error("API fetch failed");
     }
 
     const data = await response.json();
 
     if (data.error) {
-      console.log(
-        `Error from /api/assets/get-price for ${symbol}: ${data.error}`,
-      );
       console.error(data.error);
     }
 
     if (data.price !== undefined && data.price > 0) {
-      console.log(
-        `Price for ${symbol} fetched from /api/assets/get-price: ${data.price} (Source: ${data.source})`,
-      );
       return data.price;
     }
 
@@ -304,10 +305,10 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
     );
   }
 
-  console.log(`All price fetch attempts failed for ${symbol}, returning 0`);
   return 0;
 }
 
+// Search backwards up to 30 days for a previous valid price
 export async function getClosestPreviousPrice(
   symbol: string,
   currentDate: string,
@@ -367,10 +368,7 @@ export async function getClosestPreviousPrice(
         const closePrice = quote.close || 0;
         const price = Math.max(openPrice, closePrice);
         if (price > 0) {
-          console.log(
-            `Found previous price for ${symbol} on ${dateStr}: ${price}`,
-          );
-          return stockCurrency !== "USD" ? price / rate : price; // Convert to USD
+          return stockCurrency !== "USD" ? price / rate : price;
         }
       }
       daysBack++;
@@ -395,11 +393,10 @@ export async function getClosestPreviousPrice(
     }
   }
 
-  console.log(
-    `No previous price found for ${symbol} within ${maxLookbackDays} days, returning 0`,
-  );
   return 0;
 }
+
+// Adjust date if it's in the future
 function adjustDateToValidRange(dateStr: string, currentDate: string): string {
   const date = new Date(dateStr);
   const today = new Date(currentDate);
@@ -409,6 +406,7 @@ function adjustDateToValidRange(dateStr: string, currentDate: string): string {
   return date.toISOString().split("T")[0];
 }
 
+// Fetch full daily price history between two dates
 export async function getFullPriceHistory(
   symbol: string,
   startDate: string,
@@ -427,7 +425,7 @@ export async function getFullPriceHistory(
         date: startDate,
         price: quote.regularMarketPrice ?? 0,
       });
-      console.log(`Fetched full price history for ${symbol}:`, priceHistory);
+
       return priceHistory;
     } else {
       const results = await yahooFinance.chart(symbol, {
@@ -435,14 +433,12 @@ export async function getFullPriceHistory(
         period2: endDate,
         interval: "1d",
       });
-      const priceHistory: PriceEntry[] = results.quotes.map(
+      return results.quotes.map(
         (quote: { date: Date; close: number | null }) => ({
           date: quote.date.toISOString().split("T")[0],
           price: quote.close || 0,
         }),
       );
-      console.log(`Fetched full price history for ${symbol}:`, priceHistory);
-      return priceHistory;
     }
   } catch (error) {
     console.error("Error fetching full price history:", error);
@@ -450,6 +446,7 @@ export async function getFullPriceHistory(
   }
 }
 
+// Fetch extra asset details
 interface AssetDetailsData {
   marketCap: number;
   volume24h: number;
@@ -477,10 +474,8 @@ export async function getAssetDetailsData(
   try {
     const quote = await yahooFinance.quote(symbol);
     const currencyRates = await getAllCurrencyRates();
-    console.log(`Loaded ${currencyRates.size} currency rates.`);
 
     const stockCurrency = quote.currency || "USD";
-    console.log(`Detected currency for ${symbol}: ${stockCurrency}`);
 
     let marketCap = quote.marketCap || 0;
     let volume24h = quote.regularMarketVolume || 0;
@@ -501,7 +496,7 @@ export async function getAssetDetailsData(
       }
     }
 
-    const details: AssetDetailsData = {
+    return {
       marketCap: Math.max(marketCap, 0),
       volume24h: Math.max(volume24h, 0),
       fiftyTwoWeekHigh: Math.max(fiftyTwoWeekHigh, 0),
@@ -509,9 +504,6 @@ export async function getAssetDetailsData(
       trailingPE: Math.max(trailingPE, 0),
       trailingAnnualDividendYield: Math.max(trailingAnnualDividendYield, 0),
     };
-
-    console.log(`Fetched and converted asset details for ${symbol}:`, details);
-    return details;
   } catch (error) {
     console.error(`Error fetching asset details for ${symbol}:`, error);
     return {
@@ -524,6 +516,8 @@ export async function getAssetDetailsData(
     };
   }
 }
+
+// Fetch price change percentage today
 export async function getPriceChange(symbol: string): Promise<number> {
   if (!(await isValidSymbol(symbol))) {
     console.warn(`Invalid symbol ${symbol}, returning 0`);

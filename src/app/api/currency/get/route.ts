@@ -1,3 +1,5 @@
+// Return rates between 2 currencies
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import CurrencyRate from "@/models/CurrencyRate";

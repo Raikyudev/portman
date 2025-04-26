@@ -1,3 +1,5 @@
+// Route to update user's preferred currency
+
 import { dbConnect } from "@/lib/mongodb";
 import User from "@/models/User";
 import { NextResponse } from "next/server";
@@ -8,11 +10,13 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get currency from request
     const { currency } = await request.json();
 
     if (!currency) {
@@ -22,14 +26,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find user in database
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Update user currency preference
     user.preferences.currency = currency;
     await user.save();
 
+    // Return updated user details
     return NextResponse.json(
       {
         message: "Currency updated successfully",

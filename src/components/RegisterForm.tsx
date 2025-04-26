@@ -1,3 +1,5 @@
+// Register Form component
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -10,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
+// Validation schema
 const signUpSchema = z
   .object({
     first_name: z.string().min(2, "First name must be at least 2 characters"),
@@ -41,6 +44,7 @@ export default function RegisterForm() {
     resolver: zodResolver(signUpSchema),
   });
 
+  // Handle registration form submit
   const onSubmit = async (data: SignUpFormData) => {
     setError(null);
     setSuccess(null);

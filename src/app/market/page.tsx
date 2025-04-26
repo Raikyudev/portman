@@ -1,3 +1,5 @@
+// Market page
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -13,13 +15,23 @@ import { IExtendedAsset } from "@/types/asset";
 
 export default function MarketPage() {
   const { data: session, status } = useSession();
+
+  // Fetched assets data
   const [assets, setAssets] = useState<IExtendedAsset[]>([]);
+
+  // Pagination
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Search
   const [query, setQuery] = useState<string>("");
+
+  // Loading and error states
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [marketDataError, setMarketDataError] = useState<string | null>(null);
+
+  // Market data
   const [topGainers, setTopGainers] = useState<
     { symbol: string; price: number; change: string }[]
   >([]);
@@ -27,8 +39,10 @@ export default function MarketPage() {
     { symbol: string; price: number; change: string }[]
   >([]);
   const [majorIndices, setMajorIndices] = useState<
-    { symbol: string; price: number; change: string }[]
+    { name: string; price: number; change: string }[]
   >([]);
+
+  // User's watchlist
   const [watchlist, setWatchlist] = useState<
     {
       _id: string;
@@ -39,9 +53,11 @@ export default function MarketPage() {
     }[]
   >([]);
 
+  // Refs for aborting fetches and refreshing watchlist
   const abortControllerRef = useRef<AbortController | null>(null);
   const watchlistRef = useRef<{ refetch: () => Promise<void> }>(null);
 
+  // Fetch assets matching the query
   const fetchAssets = useCallback(async () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
 
@@ -64,7 +80,6 @@ export default function MarketPage() {
       setTotalPages(Math.ceil((data.total || 1) / 50));
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        console.log("Fetch aborted");
         return;
       }
       console.error("Error fetching assets:", error);
@@ -77,6 +92,7 @@ export default function MarketPage() {
     }
   }, [query, currentPage]);
 
+  // Initial assets fetch and auth check
   useEffect(() => {
     if (status === "loading") return;
     if (status === "unauthenticated" || !session?.user?.id) {
@@ -95,6 +111,7 @@ export default function MarketPage() {
     };
   }, [status, session, fetchAssets]);
 
+  // Fetch top gainers, losers and major indices
   useEffect(() => {
     if (status === "loading") return;
     if (status === "unauthenticated" || !session?.user?.id) return;
@@ -127,14 +144,17 @@ export default function MarketPage() {
     fetchMarketData();
   }, [status, session]);
 
+  // Reset page to 1 on new search
   const handleSearch = () => {
     setCurrentPage(1);
   };
 
+  // Handle page change for pagination
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
+  // Handle adding or removing from watchlist
   const handleToggleWatchlist = useCallback(
     async (assetId: string, add: boolean) => {
       try {

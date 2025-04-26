@@ -1,14 +1,17 @@
+// Route to fetch transactions for user's portfolios
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
-import { getTransactions } from "@/lib/transactions"; // Adjust import path
+import { getTransactions } from "@/lib/transactions";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Adjust import path
+import { authOptions } from "@/lib/auth";
 import Portfolio from "@/models/Portfolio";
 
 export async function GET(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,6 +26,7 @@ export async function GET(request: Request) {
 
     let portfolioIds: string[];
 
+    // Determine portfolio(s) to fetch transactions from
     if (portfolioId) {
       const portfolio = await Portfolio.findOne({
         _id: portfolioId,
@@ -45,23 +49,15 @@ export async function GET(request: Request) {
       portfolioIds = portfolios.map((portfolio) => portfolio._id.toString());
     }
 
+    // Fetch all transactions across selected portfolios
     const allTransactions = [];
     for (const pid of portfolioIds) {
       const transactions = await getTransactions(pid);
-      console.log(
-        `Transactions fetched for portfolio ${pid}:`,
-        transactions.length,
-      );
+
       allTransactions.push(...transactions);
     }
 
-    console.log(
-      "Total transactions fetched:",
-      allTransactions.length,
-      "for portfolios:",
-      portfolioIds,
-    );
-
+    // Apply limit if specified
     const effectiveLimit =
       limit !== undefined
         ? Math.min(limit, allTransactions.length)
@@ -73,12 +69,14 @@ export async function GET(request: Request) {
       );
     }
 
+    // Sort transactions by date and apply limit
     const recentTransactions = allTransactions
       .sort(
         (a, b) => new Date(b.tx_date).getTime() - new Date(a.tx_date).getTime(),
       )
       .slice(0, effectiveLimit);
 
+    // Format transactions for frontend
     const formattedTransactions = recentTransactions.map((tx) => ({
       date: tx.tx_date.toISOString().split("T")[0],
       symbol: tx.asset_details.symbol,
@@ -88,12 +86,6 @@ export async function GET(request: Request) {
       total: tx.quantity * tx.price_per_unit,
     }));
 
-    console.log(
-      "Fetched recent transactions with limit",
-      limit,
-      ":",
-      formattedTransactions,
-    );
     return NextResponse.json({ data: formattedTransactions }, { status: 200 });
   } catch (error) {
     console.error("Error fetching recent transactions:", error);

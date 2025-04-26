@@ -1,3 +1,5 @@
+// Route to re-generate and download a saved report
+
 import { NextResponse } from "next/server";
 import Report, { IReport } from "@/models/Report";
 import { dbConnect } from "@/lib/mongodb";
@@ -9,11 +11,13 @@ import { getServerExchangeRates } from "@/lib/currencyExchange";
 
 export async function GET(request: Request) {
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get report id
     const url = new URL(request.url);
     const reportId = url.searchParams.get("id");
 
@@ -26,15 +30,18 @@ export async function GET(request: Request) {
 
     await dbConnect();
 
+    // Find report
     const report: IReport | null = await Report.findById(reportId);
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
+    // Check ownership
     if (report.user_id.toString() !== (session.user as { id: string }).id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // Create generation inputs
     const generationInputs = await createGenerationInputs({
       portfolio_ids: report.portfolio_ids.map((id) => id.toString()),
       report_type: report.report_type as
@@ -48,21 +55,20 @@ export async function GET(request: Request) {
     const preferredCurrency =
       (session.user as any).preferences?.currency || "USD";
 
-    console.log("Fetching server-side currency rates...");
+    // Fetch currency rates
     const currencyRates = await getServerExchangeRates(request);
 
     let mimeType, fileBuffer;
 
+    // Generate report file based on format
     switch (report.report_format) {
       case "json":
-        console.log("Generating JSON report...");
         fileBuffer = Buffer.from(JSON.stringify(generationInputs, null, 2));
         mimeType = "application/json";
         break;
 
       case "pdf":
       default:
-        console.log("Generating PDF report...");
         fileBuffer = await generatePDF(
           generationInputs,
           session.user.first_name || "User",
@@ -76,8 +82,8 @@ export async function GET(request: Request) {
 
     const resolvedFileBuffer = fileBuffer;
 
+    // Prepare file for download
     const fileName = `${report.name}.${report.report_format.toLowerCase()}`;
-    console.log("Report download prepared:", fileName);
     return new Response(resolvedFileBuffer, {
       headers: {
         "Content-Type": mimeType,

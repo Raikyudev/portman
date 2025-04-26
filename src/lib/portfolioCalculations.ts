@@ -1,6 +1,8 @@
-// @/lib/portfolioCalculations.ts
+// Portfolio calculations utils file
+
 import { IExtendedTransaction } from "@/types/Transaction";
 
+// Calculate stock holdings at a specific date
 export async function calculateStockHoldings(
   transactions: IExtendedTransaction[],
   date: string,
@@ -25,6 +27,7 @@ export async function calculateStockHoldings(
   return holdings;
 }
 
+// Calculate total portfolio value based on holdings and stock prices
 export function calculatePortfolioValue(
   holdings: Record<string, number>,
   stockPrices: Record<string, number>,
@@ -40,6 +43,7 @@ export function calculatePortfolioValue(
   return totalValue;
 }
 
+// Calculate profits over a period, adjusting for new purchases
 export async function calculateStockProfits(
   transactions: IExtendedTransaction[],
   fromHoldingsWithValues: Record<string, { quantity: number; value: number }>,
@@ -51,16 +55,14 @@ export async function calculateStockProfits(
 }> {
   const periodProfits: Record<string, number> = {};
 
-  // Calculate period profit (change in total value, adjusted for cost of new shares)
   if (fromDate) {
     for (const symbol in toHoldingsWithValues) {
       const fromValue = fromHoldingsWithValues[symbol]?.value || 0;
       const toValue = toHoldingsWithValues[symbol]?.value || 0;
 
-      // Step 1: Calculate the change in total value
+      // Change in total value
       let periodProfit = toValue - fromValue;
 
-      // Step 2: Subtract the cost of new shares bought between fromDate and toDate
       const quantityFrom = fromHoldingsWithValues[symbol]?.quantity || 0;
       const quantityTo = toHoldingsWithValues[symbol]?.quantity || 0;
       const newSharesBought = quantityTo - quantityFrom;
@@ -78,25 +80,12 @@ export async function calculateStockProfits(
             totalCostOfNewShares += tx.quantity * tx.price_per_unit;
           }
         });
+        // Adjust profit by subtracting cost of new shares
         periodProfit -= totalCostOfNewShares;
-        console.log(`Period Profit for ${symbol}:`, {
-          fromValue,
-          toValue,
-          changeInValue: toValue - fromValue,
-          totalCostOfNewShares,
-          periodProfit,
-        });
       } else {
-        console.log(`Period Profit for ${symbol}:`, {
-          fromValue,
-          toValue,
-          changeInValue: toValue - fromValue,
-          totalCostOfNewShares: 0,
-          periodProfit,
-        });
       }
 
-      periodProfits[symbol] = periodProfit || 0; // Ensure no undefined values
+      periodProfits[symbol] = periodProfit || 0;
     }
   }
 

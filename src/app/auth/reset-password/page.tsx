@@ -1,3 +1,5 @@
+// Page for resetting password
+
 "use client";
 
 import ResetPasswordForm from "@/components/ResetPasswordForm";

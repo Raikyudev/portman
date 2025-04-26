@@ -1,3 +1,5 @@
+// Portfolio Header component
+
 import { Card } from "@/components/ui/card";
 import PortfolioDropdown from "./PortfolioDropdown";
 import { IExtendedPortfolio } from "@/types/portfolio";
@@ -28,6 +30,7 @@ export default function PortfolioHeader({
   const [formattedPortfolioValue, setFormattedPortfolioValue] = useState("");
   const [formattedProfitAmount, setFormattedProfitAmount] = useState("");
 
+  // Format portfolio value and profit based on preferred currency
   useEffect(() => {
     async function updateCurrencyValues() {
       if (isLoading) return;

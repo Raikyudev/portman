@@ -1,3 +1,5 @@
+// Route to manage user's watchlist (fetch, add, remove)
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongodb";
@@ -23,6 +25,7 @@ interface WatchlistItem {
 }
 
 export async function GET() {
+  // Authenticate user
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
@@ -31,9 +34,8 @@ export async function GET() {
   await dbConnect();
 
   try {
+    // Fetch user's watchlist
     const userId = new Types.ObjectId((session.user as { id: string }).id);
-    console.log("Fetching watchlist for userId:", userId.toString());
-
     const userWatchlist = await Watchlist.aggregate([
       {
         $match: {
@@ -56,15 +58,13 @@ export async function GET() {
       },
       {
         $project: {
-          _id: "$_id", // Include Watchlist _id
-          asset_id: "$asset_id", // Include asset_id
-          symbol: { $ifNull: ["$asset.symbol", null] }, // Retain symbol
-          price: { $ifNull: ["$asset.price", 0] }, // Include current price from Asset
+          _id: "$_id",
+          asset_id: "$asset_id",
+          symbol: { $ifNull: ["$asset.symbol", null] },
+          price: { $ifNull: ["$asset.price", 0] },
         },
       },
     ]).exec();
-
-    console.log("Raw userWatchlist from aggregation:", userWatchlist);
 
     if (!userWatchlist.length) {
       console.warn("No watchlist items found for user:", userId.toString());
@@ -97,30 +97,29 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // Authenticate user
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
   const body = await request.json();
-  console.log("Incoming POST body:", body);
   const result = watchlistSchema.safeParse(body);
   if (!result.success) {
-    console.log("Validation Error:", result.error.format());
     return NextResponse.json({ error: result.error.format() }, { status: 400 });
   }
 
   await dbConnect();
 
+  // Validate asset
   const assetId = new Types.ObjectId(result.data.asset_id);
-  console.log("Validating asset_id:", assetId.toString());
   const asset = await Asset.findById(assetId);
   if (!asset) {
     console.warn("Asset not found for asset_id:", assetId.toString());
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
-  console.log("Asset found:", asset);
 
+  // Check for duplicate asset in watchlist
   const existingWatchlist = await Watchlist.findOne({
     user_id: (session.user as { id: string }).id,
     asset_id: result.data.asset_id,
@@ -133,6 +132,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Add new asset to watchlist
   const newWatchlistAsset = new Watchlist({
     user_id: (session.user as { id: string }).id,
     asset_id: result.data.asset_id,
@@ -147,6 +147,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  // Authenticate user
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -164,6 +165,7 @@ export async function DELETE(request: Request) {
 
   await dbConnect();
 
+  // Remove asset from watchlist
   const removedWatchlist = await Watchlist.findOneAndDelete({
     user_id: (session.user as { id: string }).id,
     asset_id: id,

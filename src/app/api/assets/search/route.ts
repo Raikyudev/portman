@@ -1,3 +1,5 @@
+// Search assets
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import Asset, { IAsset } from "@/models/Asset";

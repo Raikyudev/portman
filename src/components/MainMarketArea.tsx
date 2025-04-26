@@ -1,3 +1,5 @@
+// Main Market Area component
+
 import WatchlistButton from "./WatchlistButton";
 import { IExtendedAsset } from "@/types/asset";
 import {
@@ -25,8 +27,6 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 import WhiteFilledStar from "../../public/white-filled-star.svg";
 import Image from "next/image";
-
-
 
 interface MainMarketAreaProps {
   assets: IExtendedAsset[];
@@ -57,20 +57,24 @@ export default function MainMarketArea({
   const [formattedPrices, setFormattedPrices] = useState<string[]>([]);
   const { preferredCurrency, isLoading, rates } = useCurrency();
 
+  // Handle pagination page change
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       onPageChange(newPage);
     }
   };
 
+  // Handle asset row click to view details
   const handleRowClick = (assetId: string) => {
     setSelectedAssetId(assetId);
   };
 
+  // Close asset details view
   const handleCloseDetails = () => {
     setSelectedAssetId(null);
   };
 
+  // Render pagination items
   const renderPaginationItems = () => {
     const items = [];
     const startPage = Math.max(1, currentPage - 1);
@@ -133,6 +137,7 @@ export default function MainMarketArea({
     return items;
   };
 
+  // Update prices when assets change
   useEffect(() => {
     if (isLoading || assets.length === 0) return;
 
@@ -171,11 +176,11 @@ export default function MainMarketArea({
               </div>
               <div className="flex items-center gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
                 <Image
-                    src={WhiteFilledStar}
-                    alt="White star icon"
-                    width={18}
-                    height={18}
-                    className="w-5 h-5"
+                  src={WhiteFilledStar}
+                  alt="White star icon"
+                  width={18}
+                  height={18}
+                  className="w-5 h-5"
                 />{" "}
                 to add to the watchlist
               </div>

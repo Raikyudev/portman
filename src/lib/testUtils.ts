@@ -1,31 +1,39 @@
+// Utils for testing
+
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import type { Session } from "next-auth";
 
+// In-memory Mongo server instance
 let mongo: MongoMemoryServer;
 
+// Connect to in-memory database for tests
 export async function connectTestDB() {
   mongo = await MongoMemoryServer.create();
   const uri = mongo.getUri();
   await mongoose.connect(uri);
 }
 
+// Close and clean up in-memory database
 export async function closeDatabase() {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
   if (mongo) await mongo.stop();
 }
 
+// Mock next-auth session handling
 jest.mock("next-auth");
 
+// Mock a server session return value
 export function mockSession(session: Session | null) {
   (
     getServerSession as jest.MockedFunction<typeof getServerSession>
   ).mockResolvedValue(session);
 }
 
+// Generate a mock session object with optional overrides
 export function getMockSession(
   overrides: Partial<Session["user"]> = {},
 ): Session {
@@ -42,6 +50,7 @@ export function getMockSession(
   };
 }
 
+// Create a mock POST request with JSON body
 export function createMockRequestWithJson(
   body: any,
   method: string = "POST",
@@ -53,6 +62,7 @@ export function createMockRequestWithJson(
   });
 }
 
+// Create a mock GET request with URL path
 export function createMockRequestWithUrl(
   path: string,
   method: string = "GET",
@@ -63,6 +73,7 @@ export function createMockRequestWithUrl(
   });
 }
 
+// Create a user document in the test database
 export async function createUserInDB(
   overrides: Partial<Record<string, any>> = {},
 ) {
@@ -80,6 +91,7 @@ export async function createUserInDB(
   return user;
 }
 
+// Clear all documents in all collections
 export async function clearDatabase() {
   const collections = mongoose.connection.collections;
   for (const key in collections) {

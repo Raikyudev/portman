@@ -1,3 +1,5 @@
+// Dashboard page
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +10,7 @@ import RecentTransactions from "@/components/RecentTransactions";
 import TopHoldings from "@/components/TopHoldings";
 import TopGainers from "@/components/TopGainers";
 import TopLosers from "@/components/TopLosers";
-import PerformanceChart from "@/components/PerformanceChart"; // Assuming this is the file path
+import PerformanceChart from "@/components/PerformanceChart";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -20,8 +22,7 @@ export default function DashboardPage() {
     { symbol: string; price: number; change: string }[]
   >([]);
 
-  // Memoize the performance update handler
-
+  // Fetch top gainers and losers on page load
   useEffect(() => {
     if (status === "loading") return;
 

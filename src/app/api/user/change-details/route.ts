@@ -1,3 +1,5 @@
+// Route to update user's email address
+
 import { dbConnect } from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
@@ -9,11 +11,13 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get email and password from request
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -23,16 +27,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find user in database
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
+    // Check if new email is already in the database
     const emailExists = await User.findOne({ email });
     if (emailExists && emailExists._id.toString() !== user._id.toString()) {
       return NextResponse.json(
@@ -41,9 +48,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Update user email
     user.email = email;
     await user.save();
 
+    // Return updated details
     return NextResponse.json(
       {
         message: "Email updated successfully",

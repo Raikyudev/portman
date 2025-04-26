@@ -8,7 +8,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const { status } = useSession();
   const router = useRouter();
 
-  // Immediate redirect for unauthenticated users
+  // Redirect for unauthenticated users
   if (status === "unauthenticated") {
     console.log("User is not authenticated, redirecting to login");
     router.push("/auth/login");

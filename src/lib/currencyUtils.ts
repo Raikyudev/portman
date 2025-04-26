@@ -1,6 +1,9 @@
+// Currency utility functions
+
 import { CURRENCY_SYMBOLS, Currency } from "./constants";
 import { getAllCurrencyRates } from "./currencyExchange";
 
+// Convert a single amount between currencies
 export async function convertCurrency(
   amount: number,
   fromCurrency: string = "USD",
@@ -22,6 +25,7 @@ export async function convertCurrency(
   return amount * rate;
 }
 
+// Format a number into currency string
 export function formatCurrency(
   amount: number,
   currency: Currency,
@@ -35,6 +39,7 @@ export function formatCurrency(
   return `${symbol}${formattedAmount}`;
 }
 
+// Convert and format a single ammount
 export async function convertAndFormatCurrency(
   amount: number,
   fromCurrency: string = "USD",
@@ -51,6 +56,7 @@ export async function convertAndFormatCurrency(
   return formatCurrency(convertedAmount, toCurrency, locale);
 }
 
+// Batch convert and format multiple amounts
 export async function batchConvertAndFormatCurrency(
   amounts: number[],
   fromCurrency: string = "USD",

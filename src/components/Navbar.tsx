@@ -1,3 +1,5 @@
+// Navbar component
+
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
@@ -25,10 +27,9 @@ export default function Navbar() {
     pathname === "/auth/forgot-password" ||
     pathname === "/auth/reset-password";
 
-  useEffect(() => {
-    console.log("Pathname updated to:", pathname);
-  }, [pathname]);
+  useEffect(() => {}, [pathname]);
 
+  // Check if a link is active
   const isActiveLink = (href: string): boolean => {
     if (href === "/" && pathname === "/") {
       return false;
@@ -38,7 +39,6 @@ export default function Navbar() {
 
   return (
     <nav className="flex justify-between items-center p-2">
-      {/* Left Section: Portman Logo and Home Button (only when logged in) */}
       <div className="flex items-center space-x-2">
         <Link href="/" className="text-lg font-bold">
           <span
@@ -68,7 +68,6 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Middle Section: Navigation Tabs */}
       <NavigationMenu className="flex-grow mx-auto">
         <NavigationMenuList className="flex space-x-6">
           {isLoggedIn && !isAuthPage ? (
@@ -158,7 +157,6 @@ export default function Navbar() {
         </NavigationMenuList>
       </NavigationMenu>
 
-      {/* Right Section: Sign In/Out and Register */}
       <div className="flex space-x-4">
         {isLoggedIn ? (
           <Button

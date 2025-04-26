@@ -1,3 +1,5 @@
+// All transactions window component
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,6 +39,7 @@ export default function AllTransactions({
     Record<string, { price: string; total: string }>
   >({});
 
+  // Fetch all transactions for the user or selected portfolio
   useEffect(() => {
     const fetchAllTransactions = async () => {
       setLoading(true);
@@ -47,11 +50,6 @@ export default function AllTransactions({
 
         const response = await fetch(url, {
           credentials: "include",
-        });
-        console.log("All Transactions API Response:", {
-          status: response.status,
-          statusText: response.statusText,
-          url,
         });
 
         if (!response.ok) {
@@ -65,7 +63,6 @@ export default function AllTransactions({
         }
 
         const { data } = await response.json();
-        console.log("Fetched all transactions:", data);
         setTransactions(data || []);
         setError(null);
       } catch (error) {
@@ -81,6 +78,7 @@ export default function AllTransactions({
     fetchAllTransactions();
   }, [portfolioId]);
 
+  // Update prices and totals to user's preferred currency
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading) return;

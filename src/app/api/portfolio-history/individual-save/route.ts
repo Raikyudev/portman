@@ -1,3 +1,5 @@
+// Route to calculate and save individual portfolio history
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory, { IPortfolioHistory } from "@/models/PortfolioHistory";
@@ -17,8 +19,10 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
 
+    // Get parameters
     const {
       portfolio_id,
       fromDate,
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify the portfolio belongs to the user
+    // Verify ownership
     const portfolio = await Portfolio.findOne({
       _id: portfolio_id,
       user_id: userId,
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch transactions for the specific portfolio
+    // Fetch transactions for portfolio
     const transactions = (await getTransactions(
       portfolio_id,
     )) as IExtendedTransaction[];
@@ -69,7 +73,6 @@ export async function POST(request: Request) {
     const today = getTodayDate();
     const adjustedToDate = toDate > today ? today : toDate;
     const allDates = getDateRange(fromDate, adjustedToDate);
-    console.log("Generated allDates:", allDates); // Log to check for duplicates
 
     // Fetch existing individual history
     const existingHistory = await PortfolioHistory.find({
@@ -83,7 +86,6 @@ export async function POST(request: Request) {
     const datesToCalculate = forceUpdate
       ? allDates
       : allDates.filter((date) => !existingDates.has(date));
-    console.log("Dates to calculate:", datesToCalculate); // Log to check processed dates
 
     if (datesToCalculate.length === 0) {
       return NextResponse.json(
@@ -92,7 +94,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Ensure uniqueness in datesToCalculate
     const uniqueDatesToCalculate = [...new Set(datesToCalculate)];
     if (uniqueDatesToCalculate.length !== datesToCalculate.length) {
       console.warn(
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Initial fetch for all unique symbols in transactions
+    // Find earliest transaction per symbol
     const symbolEarliestDates = transactions.reduce(
       (acc, tx) => {
         const symbol = tx.asset_details.symbol;
@@ -113,17 +114,15 @@ export async function POST(request: Request) {
       },
       {} as Record<string, string>,
     );
-    console.log("Earliest transaction dates by symbol:", symbolEarliestDates);
 
+    // Pre-fetch stock prices for all symbols
     const uniqueSymbols = new Set(
       transactions.map((tx) => tx.asset_details.symbol),
     );
     const stockPrices: Record<string, Record<string, number>> = {};
     for (const symbol of uniqueSymbols) {
       const startDate = symbolEarliestDates[symbol] || fromDate;
-      console.log(
-        `Initial fetch for ${symbol} from ${startDate} to ${adjustedToDate}...`,
-      );
+
       try {
         const newPrices = await getStockPrices(
           { [symbol]: 0 },
@@ -140,18 +139,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Process dates sequentially to avoid race conditions
+    // Calculate and save history for each date
     const newHistory: IPortfolioHistory[] = [];
     for (const date of uniqueDatesToCalculate) {
-      console.log("Processing date for portfolio", portfolio_id, ":", date);
       const holdingsForDate = await calculateStockHoldings(transactions, date);
-      console.log("Holdings calculated for date:", {
-        date,
-        holdings: holdingsForDate,
-      });
 
       if (Object.keys(holdingsForDate).length === 0) {
-        console.log("No holdings found for date, skipping:", date);
         continue;
       }
 
@@ -189,7 +182,6 @@ export async function POST(request: Request) {
       const pricesForDate = stockPrices[date] || {};
 
       if (Object.keys(pricesForDate).length === 0) {
-        console.log("No prices available for date, skipping:", date);
         continue;
       }
 
@@ -224,7 +216,7 @@ export async function POST(request: Request) {
       } else if (forceUpdate) {
         existing.port_total_value = port_total_value || 0;
         await existing.save();
-        console.log("Existing entry updated for date:", date);
+
         newHistory.push(existing);
       }
     }

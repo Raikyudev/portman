@@ -1,3 +1,5 @@
+// Recent Transactions component
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -42,6 +44,7 @@ export default function RecentTransactions({
     Record<string, { price: string; total: string }>
   >({});
 
+  // Fetch recent transactions
   useEffect(() => {
     const fetchRecentTransactions = async () => {
       setLoading(true);
@@ -52,11 +55,6 @@ export default function RecentTransactions({
 
         const response = await fetch(url, {
           credentials: "include",
-        });
-        console.log("Transactions API Response:", {
-          status: response.status,
-          statusText: response.statusText,
-          url,
         });
 
         if (!response.ok) {
@@ -70,7 +68,7 @@ export default function RecentTransactions({
         }
 
         const { data } = await response.json();
-        console.log("Fetched transactions:", data);
+
         setTransactions(data || []);
         setError(null);
       } catch (error) {
@@ -86,6 +84,7 @@ export default function RecentTransactions({
     fetchRecentTransactions();
   }, [portfolioId]);
 
+  // Convert transaction prices to user's preferred currency
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading) return;
@@ -124,10 +123,12 @@ export default function RecentTransactions({
     updateCurrencyValues();
   }, [transactions, preferredCurrency, isLoading, rates]);
 
+  // Open full transactions popout
   const openPopout = () => {
     setIsPopoutOpen(true);
   };
 
+  // Close full transactions popout
   const closePopout = () => {
     setIsPopoutOpen(false);
   };

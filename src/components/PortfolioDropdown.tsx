@@ -1,3 +1,5 @@
+// Portfolio Dropdown Component
+
 import { useState, useEffect } from "react";
 import {
   DropdownMenu,
@@ -30,6 +32,7 @@ export default function PortfolioDropdown({
   const { preferredCurrency, isLoading, rates } = useCurrency();
   const [formattedValues, setFormattedValues] = useState<string[]>([]);
 
+  // Set initial selected portfolio
   useEffect(() => {
     if (
       initialPortfolioId &&
@@ -43,6 +46,7 @@ export default function PortfolioDropdown({
     }
   }, [initialPortfolioId, portfolios]);
 
+  // Update portfolio values based on currency preference
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading || portfolios.length === 0) return;

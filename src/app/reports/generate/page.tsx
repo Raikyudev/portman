@@ -1,3 +1,5 @@
+// Report generation page
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,8 +39,9 @@ import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { reportTypes } from "@/lib/constants";
 import Image from "next/image";
-import { useRouter } from "next/navigation"; // Correct import for useRouter
+import { useRouter } from "next/navigation";
 
+// Validation schema
 const formSchema = z
   .object({
     name: z.string().min(1, "Report name is required"),
@@ -111,6 +114,7 @@ export default function Page() {
     form.watch("type") === "ai_portfolio_summary" ||
     form.watch("type") === "ai_account_summary";
 
+  // Set default date for summary reports
   useEffect(() => {
     if (isSummary) {
       const today = new Date();
@@ -121,6 +125,7 @@ export default function Page() {
     }
   }, [isSummary, form]);
 
+  // Fetch user portfolios
   useEffect(() => {
     const fetchPortfolios = async () => {
       setLoadingPortfolios(true);
@@ -143,10 +148,9 @@ export default function Page() {
     fetchPortfolios();
   }, []);
 
+  // Handle report generation
   const handleGenerateReport = async (values: z.infer<typeof formSchema>) => {
     try {
-      console.log("Form values:", values);
-
       let selectedPortfolios: string[];
       setIsSubmitting(true);
 
@@ -180,8 +184,6 @@ export default function Page() {
         name: values.name,
       };
 
-      console.log("Sending payload to /api/reports/generate:", payload);
-
       const response = await fetch("/api/reports/generate", {
         method: "POST",
         headers: {
@@ -213,7 +215,6 @@ export default function Page() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log("Report generated successfully:", fileName);
       setIsSubmitting(false);
     } catch (error) {
       console.error("Error generating report:", error);
@@ -222,6 +223,7 @@ export default function Page() {
     }
   };
 
+  // Set selected portfolio if required
   useEffect(() => {
     if (requiresPortfolio && portfolios.length > 0) {
       form.setValue("selectedPortfolio", portfolios[0]._id.toString());

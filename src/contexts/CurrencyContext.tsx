@@ -1,3 +1,5 @@
+// Currency Context
+
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
@@ -12,11 +14,13 @@ interface CurrencyContextType {
   rates: Map<string, number>;
 }
 
+// Create context
 const CurrencyContext = createContext<CurrencyContextType | undefined>(
   undefined,
 );
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+  // Provide currency-related state and exchange rates to the application after fetching from server
   const { data: session, status } = useSession();
   const [preferredCurrency, setPreferredCurrency] = useState<Currency>("USD");
   const [rates, setRates] = useState<Map<string, number>>(
@@ -49,6 +53,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Hook to access currency context, must be used inside a CurrencyProvider
 export function useCurrency() {
   const context = useContext(CurrencyContext);
   if (!context) {

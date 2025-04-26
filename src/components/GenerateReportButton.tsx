@@ -1,3 +1,5 @@
+// Generate Report Button
+
 import { Button } from "@/components/ui/button";
 
 interface GenerateButtonProps {
@@ -17,6 +19,7 @@ export default function GenerateButton({
   toDate,
   format,
 }: GenerateButtonProps) {
+  // Handle report generation
   const handleGenerateReport = async () => {
     if (!portfolioId || !fromDate || !toDate) {
       alert("Please select a portfolio and both dates.");
@@ -43,6 +46,7 @@ export default function GenerateButton({
         return;
       }
 
+      // Prepare file for download
       const contentDisposition = response.headers.get("Content-Disposition");
       let fileName = `portfolio_report.${format}`;
 

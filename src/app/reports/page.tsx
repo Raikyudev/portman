@@ -1,3 +1,5 @@
+// Reports list page
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,8 +39,6 @@ export default function Page() {
   const today = new Date();
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(today.getFullYear() - 1);
-
-  // Set today's time to 23:59:59
   today.setHours(23, 59, 59, 999);
 
   const [reports, setReports] = useState<Report[]>([]);
@@ -106,7 +106,6 @@ export default function Page() {
 
   // Handle report download
   const handleDownload = async (reportId: string, fileName: string) => {
-    console.log(`Starting download for reportId: ${reportId}`);
     try {
       // Use a query parameter (?id=reportId)
       const response = await fetch(`/api/reports/download?id=${reportId}`, {
@@ -134,8 +133,6 @@ export default function Page() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      console.log("Report downloaded successfully:", resolvedFileName);
     } catch (error) {
       console.error("Error downloading report:", error);
       alert(`Failed to download report: ${error}`);
@@ -204,7 +201,7 @@ export default function Page() {
         </div>
         <div className="p-4 bg-true-black rounded-xl">
           <ScrollArea className="h-[60vh] w-full rounded-lg">
-            {/* Table of Reports */}
+            {/* Table of Reports */}{" "}
             <Table
               className="bg-true-black rounded-xl border-separate"
               style={{ borderSpacing: "0 8px" }}
@@ -268,7 +265,7 @@ export default function Page() {
             </Table>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          {/* Generate Report Button */}
+
           <div className="mt-6 mb-4 flex justify-center">
             <Button
               asChild

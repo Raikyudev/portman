@@ -1,3 +1,5 @@
+// Delete Account Form
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { signOut } from "next-auth/react";
 
+// Validation schema
 const deleteAccountSchema = z.object({
   password: z.string().min(1, "Password is required to confirm deletion"),
 });
@@ -24,10 +27,12 @@ interface DeleteAccountFormProps {
 }
 
 export function DeleteAccountForm({ onClose }: DeleteAccountFormProps) {
+  // Initialise form
   const form = useForm<DeleteAccountFormData>({
     resolver: zodResolver(deleteAccountSchema),
   });
 
+  // Handle form submit
   const onSubmit = async (data: DeleteAccountFormData) => {
     try {
       const response = await fetch("/api/user/delete", {
@@ -44,6 +49,7 @@ export function DeleteAccountForm({ onClose }: DeleteAccountFormProps) {
         return;
       }
 
+      // Sign out user after successful deletion
       await signOut({ callbackUrl: "/" });
     } catch (error) {
       console.error("Error deleting account:", error);

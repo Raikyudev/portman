@@ -1,3 +1,5 @@
+// Settings page
+
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -33,7 +35,7 @@ export default function SettingsPage() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Currency display names for better UX
+  // Map currency codes to readable names
   const currencyDisplayNames: Record<string, string> = {
     USD: "USD - US Dollar",
     CAD: "CAD - Canadian Dollar",
@@ -44,12 +46,14 @@ export default function SettingsPage() {
     CNY: "CNY - Chinese Yuan",
   };
 
+  // Initialise preferred currency when session loads
   useEffect(() => {
     if (session?.user?.preferences?.currency) {
       setPreferredCurrency(session.user.preferences.currency as Currency);
     }
   }, [session]);
 
+  // Handle changing preferred currency
   const handleCurrencyChange = async (newCurrency: string) => {
     try {
       const response = await fetch("/api/user/change-currency", {
@@ -89,12 +93,18 @@ export default function SettingsPage() {
         >
           <TabsList className="flex flex-col h-fit space-y-2 bg-true-black p-4 rounded-lg md:col-span-1">
             <TabsTrigger value="account" asChild>
-              <Button variant="ghost" className="w-full justify-start hover:bg-red">
+              <Button
+                variant="ghost"
+                className="w-full justify-start hover:bg-red"
+              >
                 Account
               </Button>
             </TabsTrigger>
             <TabsTrigger value="portfolio" asChild>
-              <Button variant="ghost" className="w-full justify-start hover:bg-red">
+              <Button
+                variant="ghost"
+                className="w-full justify-start hover:bg-red"
+              >
                 Portfolio
               </Button>
             </TabsTrigger>

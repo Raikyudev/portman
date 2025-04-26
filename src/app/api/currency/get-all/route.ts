@@ -1,3 +1,5 @@
+// Get all exchange rates from the database
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import CurrencyRate from "@/models/CurrencyRate";

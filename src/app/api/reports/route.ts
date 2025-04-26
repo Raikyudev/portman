@@ -1,3 +1,5 @@
+// Route to fetch user's reports
+
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Report, { IReport } from "@/models/Report";
@@ -7,24 +9,21 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
-    console.log("Authenticating user...");
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session || !session.user || !(session.user as { id?: string }).id) {
-      console.error("Authentication failed: Unauthorized");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userId = (session.user as { id: string }).id;
 
-    console.log("Connecting to database...");
     await dbConnect();
 
-    // Parse query parameters for date range
+    // Get parameters
     const { searchParams } = new URL(request.url);
     let fromDate = searchParams.get("fromDate");
     let toDate = searchParams.get("toDate");
 
-    // Default to last year if no date range is provided
     const today = new Date();
     const defaultFromDate = new Date(today);
     defaultFromDate.setFullYear(today.getFullYear() - 1);
@@ -49,10 +48,6 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
-
-    console.log(
-      `Fetching reports for user ${userId} from ${fromDateObj} to ${toDateObj}...`,
-    );
 
     // Fetch and sort reports by date in descending order (most recent first)
     const reports: IReport[] = await Report.find({
@@ -91,7 +86,6 @@ export async function GET(request: Request) {
       };
     });
 
-    console.log(`Found ${formattedReports.length} reports`);
     return NextResponse.json({ reports: formattedReports }, { status: 200 });
   } catch (error) {
     console.error("Error fetching reports:", error);

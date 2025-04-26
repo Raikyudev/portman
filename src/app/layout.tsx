@@ -1,3 +1,5 @@
+// Root layout for the website
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { getServerSession } from "next-auth/next";

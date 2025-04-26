@@ -1,5 +1,7 @@
+// Asset details component
+
 import AssetPriceChart from "./AssetPriceChart";
-import WatchlistButton from "./WatchlistButton"; // Import WatchlistButton
+import WatchlistButton from "./WatchlistButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -7,7 +9,7 @@ import { useState, useEffect } from "react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
 
-// Utility function to format large numbers
+// Format large numbers with units
 const formatNumber = (num: number): string => {
   if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
   if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
@@ -15,7 +17,7 @@ const formatNumber = (num: number): string => {
   return `$${num.toFixed(2)}`;
 };
 
-// Utility function to format percentage
+// Format percentage values
 const formatPercentage = (num: number): string => {
   return `${(num * 100).toFixed(2)}%`;
 };
@@ -71,6 +73,7 @@ export default function AssetDetails({
 
   const { preferredCurrency, isLoading, rates } = useCurrency();
 
+  // Fetch asset details once symbol is available
   useEffect(() => {
     const fetchDetails = async () => {
       if (symbol) {
@@ -93,6 +96,7 @@ export default function AssetDetails({
     fetchDetails();
   }, [symbol]);
 
+  // Convert numeric asset details to user's preferred currency
   useEffect(() => {
     const convertDetails = async () => {
       if (isLoading || !details || Object.values(details).every((v) => v === 0))
@@ -130,7 +134,6 @@ export default function AssetDetails({
         className="p-0 w-full flex flex-col justify-between h-full"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with Back Button and Watchlist Button */}
         <div className="p-4 flex justify-between items-center">
           <Button
             variant="ghost"
@@ -161,7 +164,6 @@ export default function AssetDetails({
           )}
         </div>
 
-        {/* Asset Price Chart - Centered Vertically */}
         <div className="flex-1 flex items-center justify-center w-full">
           <AssetPriceChart
             assetId={assetId}
@@ -170,7 +172,6 @@ export default function AssetDetails({
           />
         </div>
 
-        {/* Additional Details - At the Bottom with 6 Fields */}
         <div className="p-4 border-t border-gray-700 w-full max-w-2xl">
           <h3 className="text-lg font-semibold mb-2">Additional Details</h3>
           <div className="grid grid-cols-3 gap-4">

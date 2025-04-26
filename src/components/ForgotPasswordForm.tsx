@@ -1,3 +1,5 @@
+// Forgot Password Form
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ export default function ForgotPasswordForm({
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -36,9 +39,11 @@ export default function ForgotPasswordForm({
       } else {
         setMessage("Password reset link sent to your email");
         if (onSuccess) onSuccess();
+
+        // Redirect to login
         setTimeout(() => {
           router.push("/auth/login");
-        }, 3000);
+        }, 1000);
       }
     } catch (error) {
       setMessage("Error sending reset link");

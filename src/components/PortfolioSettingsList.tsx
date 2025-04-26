@@ -1,3 +1,5 @@
+// Portfolio Settings List component
+
 import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,7 @@ export default function PortfolioSettingsList() {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
+  // Fetch user portfolios when component loads
   useEffect(() => {
     async function fetchPortfolios() {
       try {
@@ -51,11 +54,13 @@ export default function PortfolioSettingsList() {
     fetchPortfolios();
   }, []);
 
+  // Open delete dialog
   const handleDeleteClick = (portfolio: Portfolio) => {
     setSelectedPortfolio(portfolio);
     setIsDeleteDialogOpen(true);
   };
 
+  // Confirm and delete portfolio
   const confirmDeletePortfolio = async () => {
     if (!selectedPortfolio) return;
 
@@ -84,6 +89,7 @@ export default function PortfolioSettingsList() {
     }
   };
 
+  // Open edit dialog
   const handleEditClick = (portfolio: Portfolio) => {
     setSelectedPortfolio(portfolio);
     setEditName(portfolio.name);
@@ -91,6 +97,7 @@ export default function PortfolioSettingsList() {
     setIsEditDialogOpen(true);
   };
 
+  // Submit edit changes
   const handleEditSubmit = async () => {
     if (!selectedPortfolio) return;
 

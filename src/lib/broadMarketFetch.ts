@@ -1,16 +1,19 @@
+// Search helper functions
+
 import { dbConnect } from "@/lib/mongodb";
 import Asset, { IAsset } from "@/models/Asset";
 import { marketPriorityMap } from "@/lib/constants";
 
-// Helper function to sort assets based on user's currency
+// Sort assets based on market priority and asset type
 function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
-  // Step 1: Initial sort by market and asset type
+  // Sort assets by market priority first
   const initiallySorted = assets.sort((a, b) => {
-    // 1. Market priority based on user's currency
     const priorityA = marketPriorityMap[userCurrency] || [];
     const priorityB = marketPriorityMap[userCurrency] || [];
     const indexA = priorityA.indexOf(a.market);
     const indexB = priorityB.indexOf(b.market);
+
+    // Compare based on user's preferences
     const marketComparison =
       indexA === -1 && indexB === -1
         ? 0
@@ -21,7 +24,7 @@ function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
             : indexA - indexB;
     if (marketComparison !== 0) return marketComparison;
 
-    // 2. Asset type priority (ascending)
+    // If market priority is same, sort by asset type
     const assetTypePriority: { [key: string]: number } = {
       stock: 1,
       etf: 2,
@@ -33,7 +36,7 @@ function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
     return priorityAByType - priorityBByType;
   });
 
-  // Step 2: Group by market and asset type, then sort alphabetically within each group
+  // Group assets by market and asset type
   const grouped: { [key: string]: IAsset[] } = {};
   initiallySorted.forEach((asset) => {
     const key = `${asset.market}-${asset.asset_type}`;
@@ -41,7 +44,7 @@ function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
     grouped[key].push(asset);
   });
 
-  // Sort each group alphabetically by symbol
+  // Sort assets alphabetically inside each g roup
   Object.keys(grouped).forEach((key) => {
     grouped[key].sort((a, b) => {
       const symbolA = a.symbol.toLowerCase();
@@ -50,10 +53,13 @@ function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
     });
   });
 
-  // Flatten the groups back into a single array while preserving order
+  // Reconstruct the full sorted list based on market and type
   const sortedAssets: IAsset[] = [];
-  // Reconstruct the array in the order of market priority
+
+  // RGet unique list of markets
   const markets = [...new Set(initiallySorted.map((asset) => asset.market))];
+
+  // Sort markets by user's market preferences based on user currency
   markets.sort((a, b) => {
     const indexA = marketPriorityMap[userCurrency]?.indexOf(a) ?? -1;
     const indexB = marketPriorityMap[userCurrency]?.indexOf(b) ?? -1;
@@ -67,6 +73,8 @@ function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
   });
 
   const assetTypes = ["stock", "etf", "fund", "trust"];
+
+  // Add assets back in correct order by market and type
   markets.forEach((market) => {
     assetTypes.forEach((type) => {
       const key = `${market}-${type}`;
@@ -82,18 +90,18 @@ function sortAssets(assets: IAsset[], userCurrency: string): IAsset[] {
 interface BroadMarketFetchParams {
   page: number;
   limit: number;
-  userCurrency?: string; // Optional parameter for user's currency
+  userCurrency?: string;
 }
 
+// Fetch and paginate all assets, sorted according to user preferred currency
 export async function broadMarketFetch({
   page,
   limit,
-  userCurrency = "USD", // Default to USD if not provided
+  userCurrency = "USD",
 }: BroadMarketFetchParams): Promise<{ assets: IAsset[]; total: number }> {
   try {
     await dbConnect();
 
-    // Fetch all assets and convert to plain objects
     let assets: IAsset[] = (await Asset.find({}).exec()).map((doc) =>
       doc.toObject(),
     );
@@ -103,7 +111,7 @@ export async function broadMarketFetch({
       return asset.symbol || asset.name;
     });
 
-    // Apply client-side sorting based on user's currency
+    // Sort assets by market and type preferrences
     assets = sortAssets(assets, userCurrency);
 
     // Apply pagination

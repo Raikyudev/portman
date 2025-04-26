@@ -1,3 +1,5 @@
+// Delete portfolio route
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import Portfolio from "@/models/Portfolio";
@@ -29,6 +31,7 @@ export async function DELETE(request: Request) {
   }
 
   try {
+    // Check if user owns the portfolio
     const portfolio = await Portfolio.findOne({
       _id: portfolioId,
       user_id: userId,
@@ -41,6 +44,7 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Delete portfolio and all related data
     await Portfolio.deleteOne({ _id: portfolioId });
 
     await PortfolioAsset.deleteMany({ portfolio_id: portfolioId });

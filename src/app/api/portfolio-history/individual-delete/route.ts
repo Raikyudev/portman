@@ -1,4 +1,4 @@
-// pages/api/portfolio-history/individual-delete/route.ts
+// Route for deleting portfolio history from a given date to today
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioHistory from "@/models/PortfolioHistory";
@@ -11,10 +11,9 @@ export async function DELETE(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
-    console.log("Session checked in DELETE:", { session });
     if (!session || !session.user || !(session.user as { id?: string }).id) {
-      console.log("Unauthorized session in DELETE:", { session });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -43,15 +42,13 @@ export async function DELETE(request: Request) {
       Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0),
     );
 
-    // Set end date to today (including current time)
-    const endOfDay = new Date(); // Current date and time
+    const endOfDay = new Date();
 
     // Verify portfolio ownership
     const portfolio = await Portfolio.findOne({
       _id: new Types.ObjectId(portfolioId),
       user_id: userId,
     });
-    console.log("Portfolio fetched for portfolioId:", portfolioId, portfolio);
     if (!portfolio) {
       return NextResponse.json(
         { error: "Portfolio not found or unauthorized" },
@@ -59,7 +56,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Delete PortfolioHistory entries for the specified portfolio from startOfDay to today
+    // Delete history entries
     const deleteResult = await PortfolioHistory.deleteMany({
       portfolio_id: new Types.ObjectId(portfolioId),
       port_history_date: {
@@ -67,8 +64,6 @@ export async function DELETE(request: Request) {
         $lte: endOfDay,
       },
     });
-
-    console.log("Delete result:", deleteResult);
 
     if (deleteResult.deletedCount === 0) {
       return NextResponse.json(

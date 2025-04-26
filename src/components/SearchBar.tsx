@@ -1,4 +1,4 @@
-// components/SearchBar.tsx
+// SearchBar component
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +18,13 @@ export default function SearchBar({
 }: SearchBarProps) {
   const [localQuery, setLocalQuery] = useState(query);
 
+  // Search with the current localQuery
   const handleSearch = () => {
     setQuery(localQuery);
     onSearch();
   };
 
+  // Allow pressing "Enter" to search
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSearch();

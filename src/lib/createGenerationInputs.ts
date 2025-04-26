@@ -1,3 +1,5 @@
+// Generation of report inputs
+
 import { getTransactions } from "@/lib/transactions";
 import { getPortfolios } from "@/lib/portfolioDetails";
 import {
@@ -33,13 +35,15 @@ export async function createGenerationInputs(
     description: portfolio.description || "",
   }));
 
-  // Initialize portfolio holdings object
+  // Prepare the object to hold data for each portfolio
   const portfolioHoldings: Record<string, PortfolioHoldings> = {};
 
   for (const portfolioId of portfolio_ids) {
+    // Fetch all transactions for the portfolio
     const transactions = await getTransactions(portfolioId);
 
     if (!transactions || transactions.length === 0) {
+      // Handle case where portfolio has no transactions
       portfolioHoldings[portfolioId] = {
         stockHoldingsFrom: {},
         stockHoldingsTo: {},
@@ -54,9 +58,13 @@ export async function createGenerationInputs(
     const stockHoldingsFrom = formattedFromDate
       ? await calculateStockHoldings(transactions, formattedFromDate)
       : {};
+
+    // Get stock prices for starting date
     const stockPricesFrom = formattedFromDate
       ? await getStocksPriceForDay(stockHoldingsFrom, formattedFromDate)
       : {};
+
+    // Calculate total portfolio value at fromDate
     const portfolioValueFrom = formattedFromDate
       ? calculatePortfolioValue(stockHoldingsFrom, stockPricesFrom)
       : 0;
@@ -66,10 +74,14 @@ export async function createGenerationInputs(
       transactions,
       formattedToDate,
     );
+
+    // Get stock prices for ending date
     const stockPricesTo = await getStocksPriceForDay(
       stockHoldingsTo,
       formattedToDate,
     );
+
+    // Calculate total portfolio value at toDate
     const portfolioValueTo = calculatePortfolioValue(
       stockHoldingsTo,
       stockPricesTo,
@@ -101,7 +113,7 @@ export async function createGenerationInputs(
       stockHoldingsToWithValues[symbol] = { quantity, value };
     }
 
-    // Calculate profits
+    // Calculate profit/loss between fromDate and toDate
     const { periodProfits } = await calculateStockProfits(
       transactions,
       stockHoldingsFromWithValues,
@@ -110,6 +122,7 @@ export async function createGenerationInputs(
       formattedToDate,
     );
 
+    // Store results for this portfolio
     portfolioHoldings[portfolioId] = {
       stockHoldingsFrom: stockHoldingsFromWithValues,
       stockHoldingsTo: stockHoldingsToWithValues,
@@ -119,6 +132,7 @@ export async function createGenerationInputs(
     };
   }
 
+  // Return full structure for report generation
   return {
     fromDate: formattedFromDate,
     toDate: formattedToDate,

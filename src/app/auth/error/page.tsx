@@ -1,3 +1,5 @@
+// Page to display email verification error message
+
 export default function ErrorPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black p-4">

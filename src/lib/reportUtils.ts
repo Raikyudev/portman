@@ -1,3 +1,5 @@
+// Report generation file
+
 import puppeteer from "puppeteer";
 import { format } from "date-fns";
 import { PortfolioData } from "@/types/portfolio";
@@ -9,6 +11,7 @@ import {
 import { getTodayPriceBySymbol } from "@/lib/stockPrices";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 
+// Converts and formats a value based on preferred currency
 async function convertAndFormatValue(
   value: number,
   preferredCurrency: string,
@@ -21,12 +24,13 @@ async function convertAndFormatValue(
   return `${symbol}${convertedValue.toFixed(2)}`;
 }
 
+// PDF generation function
 export async function generatePDF(
   data: PortfolioData,
   first_name: string,
   last_name: string,
   preferredCurrency: string,
-  rates: Map<string, number>, // Add optional rates parameter
+  rates: Map<string, number>,
 ): Promise<Buffer> {
   try {
     const isSummaryReport = data.reportType === "summary";
@@ -39,6 +43,7 @@ export async function generatePDF(
     const currencySymbol =
       CURRENCY_SYMBOLS[preferredCurrency.toUpperCase()] || preferredCurrency;
 
+    // Top header
     let htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -127,7 +132,9 @@ export async function generatePDF(
         <p class="subheader">Currency: ${preferredCurrency.toUpperCase()}</p>
     `;
 
+    // Handle different report types
     switch (data.reportType) {
+      // Income report for stock values and profits
       case "income_report":
         htmlContent += `
           <div>
@@ -239,6 +246,7 @@ export async function generatePDF(
         `;
         break;
 
+      // Portfolio report showing current holdings and profit
       case "portfolio_report":
         htmlContent += `
           <div>
@@ -457,6 +465,7 @@ export async function generatePDF(
         `;
         break;
 
+      // Yearly performance summary
       case "summary":
         htmlContent += `
           <div>
@@ -525,6 +534,7 @@ export async function generatePDF(
         `;
         break;
 
+      // AI-generated predictions and recommendations
       case "ai_portfolio_summary":
       case "ai_account_summary":
         const isAccountSummary = data.reportType === "ai_account_summary";
@@ -551,8 +561,6 @@ export async function generatePDF(
           `;
           break;
         }
-
-        console.log("Current holdings: ", currentHoldings);
 
         const pricePromises = currentHoldings.map(async (symbol) => ({
           symbol,
@@ -693,6 +701,7 @@ export async function generatePDF(
         console.error(`Unsupported report type: ${data.reportType}`);
     }
 
+    // Footer with portfolio list
     htmlContent += `
       <div>
         <h2 class="subheader">* Portfolios Included</h2>
@@ -721,7 +730,7 @@ export async function generatePDF(
       </html>
     `;
 
-    console.log("Launching Puppeteer to generate PDF...");
+    // Generate PDF with Puppeteer
     const browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -734,10 +743,6 @@ export async function generatePDF(
     });
     await browser.close();
 
-    console.log(
-      "Debug: PDF buffer successfully generated, size:",
-      pdfBuffer.length,
-    );
     return Buffer.from(pdfBuffer);
   } catch (error) {
     console.error("Error generating PDF:", error);

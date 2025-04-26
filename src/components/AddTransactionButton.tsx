@@ -1,4 +1,5 @@
-// src/components/AddTransactionButton.tsx
+// Add transaction button component
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ export default function AddTransactionButton({
 }: AddTransactionButtonProps) {
   const router = useRouter();
 
+  // Handle button click to navigate to add transaction page
   const handleAddTransaction = () => {
     if (portfolioId && isEnabled) {
       router.push(`/portfolio/${portfolioId}/add-transaction`);

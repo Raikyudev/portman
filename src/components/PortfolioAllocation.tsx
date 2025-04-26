@@ -1,3 +1,5 @@
+// Portfolio Allocation component
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -46,6 +48,7 @@ export default function PortfolioAllocation({
     Record<string, string>
   >({});
 
+  // Fetch holdings data
   useEffect(() => {
     const fetchHoldings = async () => {
       setLoading(true);
@@ -77,6 +80,7 @@ export default function PortfolioAllocation({
     }
   }, [portfolioId]);
 
+  // Update currency formatting
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading) return;

@@ -1,18 +1,21 @@
+// NextAuth configuration file
+
 import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { dbConnect } from "@/lib/mongodb";
 import User, { IUser } from "@/models/User";
 
+// NextAuth configuration
 export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 7 * 24 * 60 * 60, // 7 days
     updateAge: 24 * 60 * 60,
   },
   jwt: {
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
   providers: [
     CredentialsProvider({
@@ -28,12 +31,14 @@ export const authOptions: AuthOptions = {
         },
       },
       async authorize(credentials) {
+        // Check if credentials are provided
         if (!credentials || !credentials.email || !credentials.password) {
           throw new Error("Missing credentials");
         }
 
         await dbConnect();
 
+        // Find user by email
         const user = await User.findOne({
           email: credentials.email,
         });
@@ -42,10 +47,12 @@ export const authOptions: AuthOptions = {
           throw new Error("Invalid credentials");
         }
 
+        // Don't allow unverified users
         if (!user.isVerified) {
           throw new Error("Please verify your email before logging in.");
         }
 
+        // Verify password
         const passwordsMatch = await bcrypt.compare(
           credentials.password,
           user.password,
@@ -55,6 +62,7 @@ export const authOptions: AuthOptions = {
           throw new Error("Invalid credentials");
         }
 
+        // Return user object
         return {
           id: user._id.toString(),
           email: user.email,
@@ -67,6 +75,7 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      // Attach user data to token
       if (user) {
         const userData = user;
         token.id = userData.id.toString();
@@ -76,6 +85,7 @@ export const authOptions: AuthOptions = {
         token.first_name = userData.first_name;
         token.last_name = userData.last_name;
       }
+      // Handle token updates
       if (trigger === "update" && session) {
         if (session.preferences) {
           token.preferences = session.preferences;
@@ -86,6 +96,7 @@ export const authOptions: AuthOptions = {
       }
       return token;
     },
+    // Attach token data to session
     async session({ session, token }) {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string;

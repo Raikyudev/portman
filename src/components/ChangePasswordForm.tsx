@@ -1,3 +1,5 @@
+// Change Password Form component
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { useSession } from "next-auth/react";
 
+// Validation schema for password change
 const schema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
@@ -32,10 +35,13 @@ interface ChangePasswordFormProps {
 
 export function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
   const { update } = useSession();
+
+  // Initialise form
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
+  // Handle form submit
   const onSubmit = async (data: FormData) => {
     try {
       const response = await fetch("/api/user/change-password", {
@@ -55,6 +61,8 @@ export function ChangePasswordForm({ onClose }: ChangePasswordFormProps) {
         form.setError("root", { message: error.error });
       } else {
         const result = await response.json();
+
+        // Update session after password change
         await update({
           user: {
             email: result.user.email,

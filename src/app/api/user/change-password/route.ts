@@ -1,3 +1,5 @@
+//Route to update user's password
+
 import { dbConnect } from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
@@ -9,11 +11,13 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
+    // Authenticate user
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get parameters from request
     const { currentPassword, newPassword } = await request.json();
 
     if (!currentPassword || !newPassword) {
@@ -23,11 +27,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find user in database
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Verify current password
     const isPasswordValid = await bcrypt.compare(
       currentPassword,
       user.password,
@@ -39,9 +45,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Encrypt and update new password
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
+    // Return updated details
     return NextResponse.json(
       {
         message: "Password updated successfully",

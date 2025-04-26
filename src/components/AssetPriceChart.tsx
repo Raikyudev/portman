@@ -1,3 +1,5 @@
+// Asset Price Chart component
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,11 +42,13 @@ export default function AssetPriceChart({
   const [selectedRange, setSelectedRange] = useState("YTD");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const { preferredCurrency, isLoading, rates } = useCurrency();
 
   const [formattedLatestPrice, setFormattedLatestPrice] = useState("");
   const [formattedProfitAmount, setFormattedProfitAmount] = useState("");
 
+  // Fetch asset price history data
   useEffect(() => {
     const fetchPriceData = async () => {
       setLoading(true);
@@ -57,7 +61,6 @@ export default function AssetPriceChart({
           console.error("Failed to fetch price data");
         }
         const { data }: { data: AssetPriceResponse } = await response.json();
-        console.log("Fetched data:", data);
 
         setCompanyName(data.name || "Unknown");
         setSymbol(data.symbol || "N/A");
@@ -71,13 +74,6 @@ export default function AssetPriceChart({
           const latestValue =
             data.priceHistory[data.priceHistory.length - 1].price || 0;
           const oldestValue = data.priceHistory[0].price || latestValue;
-
-          console.log(
-            "Latest value:",
-            latestValue,
-            "Oldest value:",
-            oldestValue,
-          );
 
           if (oldestValue === 0 && latestValue === 0) {
             console.warn(
@@ -96,13 +92,6 @@ export default function AssetPriceChart({
               ((latestValue - oldestValue) / oldestValue) * 100;
             const amountChange = latestValue - oldestValue;
 
-            console.log(
-              "Percentage change:",
-              percentageChange,
-              "Amount change:",
-              amountChange,
-            );
-
             setLatestPrice(latestValue);
             setProfit({
               percentage: isNaN(percentageChange)
@@ -112,7 +101,6 @@ export default function AssetPriceChart({
             });
           }
         } else {
-          console.log("No price history available");
           setLatestPrice(0);
           setProfit({ percentage: 0, amount: 0 });
         }
@@ -127,6 +115,7 @@ export default function AssetPriceChart({
     fetchPriceData();
   }, [assetId, selectedRange, onSymbolFetched]);
 
+  // Update price and profit to user's preferred currency
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading) return;
@@ -147,13 +136,13 @@ export default function AssetPriceChart({
     updateCurrencyValues();
   }, [latestPrice, profit.amount, preferredCurrency, isLoading, rates]);
 
+  // Format chart data for recharts
   const chartData = priceData.map((entry) => ({
     date: new Date(entry.date).toLocaleDateString(),
     value: entry.price || 0,
   }));
 
-  console.log("Chart data:", chartData);
-
+  // Custom tooltip for chart
   const CustomTooltip = ({
     active,
     payload,

@@ -1,3 +1,4 @@
+// Watchlist Button component
 
 import Image from "next/image";
 import { useState, useCallback } from "react";
@@ -11,8 +12,8 @@ import {
 
 interface WatchlistButtonProps {
   symbol: string;
-  watchlist: string[]; // Array of symbols in the watchlist
-  onToggleWatchlist: () => Promise<void>; // Updated to accept a function
+  watchlist: string[];
+  onToggleWatchlist: () => Promise<void>;
 }
 
 export default function WatchlistButton({
@@ -23,6 +24,7 @@ export default function WatchlistButton({
   const isInWatchlist = watchlist.includes(symbol);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Manages asset in the watchlist - Add or Remove
   const handleToggle = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation(); // Prevent the click event from bubbling up to the TableRow

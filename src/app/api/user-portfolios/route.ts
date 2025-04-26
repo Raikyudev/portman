@@ -1,3 +1,5 @@
+// Route to return all user's portfolios
+
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import Portfolio from "@/models/Portfolio";

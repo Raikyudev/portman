@@ -1,7 +1,10 @@
+// Fetch major indices data
+
 import { NextResponse } from "next/server";
 import yahooFinance from "yahoo-finance2";
 import { getServerExchangeRates } from "@/lib/currencyExchange";
 
+// List of major indices symbols
 const indexList = [
   { symbol: "^NDX", name: "NASDAQ-100" },
   { symbol: "^GSPC", name: "S&P 500" },
@@ -15,6 +18,7 @@ const indexList = [
   { symbol: "^N225", name: "Nikkei 225" },
 ];
 
+// Supported currencies
 const supportedCurrencies = ["USD", "CAD", "GBP", "EUR", "JPY", "HKD", "CNY"];
 
 export async function GET(request: Request) {
@@ -25,17 +29,12 @@ export async function GET(request: Request) {
     for (const { symbol, name } of indexList) {
       const quote = await yahooFinance.quote(symbol);
 
-      console.log(`Fetched quote for ${symbol}:`, {
-        price: quote.regularMarketPrice,
-        currency: quote.currency,
-        changePercent: quote.regularMarketChangePercent,
-      });
-
       if (!quote.regularMarketPrice || !quote.currency) continue;
 
       let price = quote.regularMarketPrice;
       const currency = quote.currency.toUpperCase();
 
+      // Convert price to usd if needed
       if (currency !== "USD") {
         if (supportedCurrencies.includes(currency)) {
           const rate = exchangeRates.get(currency);

@@ -1,3 +1,5 @@
+// TopGainers component
+
 "use client";
 
 import {
@@ -28,6 +30,7 @@ export default function TopGainers({ topGainers }: TopGainersProps) {
   const { preferredCurrency, isLoading, rates } = useCurrency();
   const [formattedPrices, setFormattedPrices] = useState<string[]>([]);
 
+  //Convert prices to user's preferred currency
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading || topGainers.length === 0) return;

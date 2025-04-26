@@ -1,3 +1,5 @@
+// Watchlist component
+
 import React, {
   useState,
   useEffect,
@@ -44,6 +46,7 @@ const Watchlist = forwardRef<WatchlistRef, WatchlistProps>(
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Fetch current user's watchlist
     const fetchWatchlist = async () => {
       if (status === "loading") return;
 
@@ -87,14 +90,17 @@ const Watchlist = forwardRef<WatchlistRef, WatchlistProps>(
       }
     };
 
+    // Allow parent component to trigger a manual refresh
     useImperativeHandle(ref, () => ({
       refetch: fetchWatchlist,
     }));
 
+    // Fetch watchlist on load
     useEffect(() => {
       fetchWatchlist();
     }, []);
 
+    // Convert values to user's preferred currency
     useEffect(() => {
       const updateCurrencyValues = async () => {
         if (isLoading || watchlistLocal.length === 0) return;

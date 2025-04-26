@@ -1,3 +1,5 @@
+// fetchAssets script for saving assets in the database
+
 import Asset from "@/models/Asset";
 import { dbConnect, closeDatabase } from "@/lib/mongodb";
 import fetch from "node-fetch";
@@ -17,6 +19,7 @@ interface FetchedAsset {
   type: string;
 }
 
+// Map exchange short anmes to their native currencies
 const exchangeCurrencyMap: { [key: string]: string } = {
   NASDAQ: "USD",
   NYSE: "USD",
@@ -34,7 +37,6 @@ export default async function fetchAssets(request: Request) {
   await dbConnect();
 
   try {
-    console.log("Fetching assets from API...");
     const response = await fetch(
       `https://financialmodelingprep.com/api/v3/available-traded/list?apikey=${FMP_API_KEY}`,
     );
@@ -45,17 +47,16 @@ export default async function fetchAssets(request: Request) {
     }
 
     let stocks: FetchedAsset[] = (await response.json()) as FetchedAsset[];
-    console.log(`Fetched ${stocks.length} assets from API.`);
 
+    // Only keep supported exchanges
     stocks = stocks.filter(
       (stock) => stock.exchangeShortName in exchangeCurrencyMap,
     );
 
+    // Get server currency exchange rates
     const currencyRates = await getServerExchangeRates(request);
 
-    const logInterval = setInterval(() => {
-      console.log(`Processing... ${stocks.length} assets remaining`);
-    }, 10_000);
+    const logInterval = setInterval(() => {}, 10_000);
 
     const bulkOps = await Promise.all(
       stocks.map(async (stock) => {
@@ -70,6 +71,7 @@ export default async function fetchAssets(request: Request) {
               `No exchange rate found for ${stockCurrency} for ${stock.symbol}, using original price`,
             );
           } else {
+            // Convert price to USD
             convertedPrice = stock.price / rate;
           }
         }
@@ -87,17 +89,15 @@ export default async function fetchAssets(request: Request) {
                 last_updated: new Date(),
               },
             },
-            upsert: true,
+            upsert: true, // Insert if missing
           },
         };
       }),
     );
 
     if (bulkOps.length > 0) {
-      const result = await Asset.bulkWrite(bulkOps);
-      console.log("Bulk write result: ", result);
+      await Asset.bulkWrite(bulkOps);
     } else {
-      console.log("No assets to update.");
     }
 
     clearInterval(logInterval);

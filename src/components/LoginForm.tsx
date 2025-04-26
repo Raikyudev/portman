@@ -1,3 +1,5 @@
+// Login Form
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
+// Validation schema
 const loginSchema = z.object({
   email: z
     .string()
@@ -29,6 +32,7 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Initialise form
   const {
     register,
     handleSubmit,
@@ -38,6 +42,7 @@ export default function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
+  // Handle form submit
   const onSubmit = async (data: LoginFormData) => {
     setError(null);
     setSuccess(null);
@@ -51,6 +56,8 @@ export default function LoginForm() {
 
       if (response?.ok) {
         setSuccess("Log in successful! Redirecting to Dashboard...");
+
+        // Redirect after successful login
         setTimeout(() => {
           reset();
           router.push("/dashboard");

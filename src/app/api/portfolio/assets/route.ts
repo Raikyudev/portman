@@ -1,3 +1,5 @@
+// Fetch portfolio assets route
+
 import { dbConnect } from "@/lib/mongodb";
 import PortfolioAsset from "@/models/PortfolioAsset";
 import { NextResponse } from "next/server";
@@ -15,6 +17,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No portfolio ID" }, { status: 400 });
     }
 
+    // Aggregate portfolio assets with asset information
     const portfolioAssets = await PortfolioAsset.aggregate([
       { $match: { portfolio_id: new mongoose.Types.ObjectId(id) } },
       {

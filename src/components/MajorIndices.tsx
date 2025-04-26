@@ -1,3 +1,5 @@
+// Major Indices component
+
 "use client";
 
 import {
@@ -28,6 +30,7 @@ export default function MajorIndices({ majorIndices }: MajorIndicesProps) {
   const { preferredCurrency, isLoading, rates } = useCurrency();
   const [formattedPrices, setFormattedPrices] = useState<string[]>([]);
 
+  // Update currency values when indices change
   useEffect(() => {
     const updateCurrencyValues = async () => {
       if (isLoading || majorIndices.length === 0) return;

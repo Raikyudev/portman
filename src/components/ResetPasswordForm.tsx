@@ -1,3 +1,5 @@
+// Reset Password Form component
+
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,12 +15,14 @@ export default function ResetPasswordForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Validate token in the URL
   useEffect(() => {
     if (!token) {
       setMessage("Invalid or missing token");
     }
   }, [token]);
 
+  // Handle password reset submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
