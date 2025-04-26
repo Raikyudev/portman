@@ -8,6 +8,7 @@ import TopGainers from "@/components/TopGainers";
 import TopLosers from "@/components/TopLosers";
 import SearchBar from "@/components/SearchBar";
 import MainMarketArea from "@/components/MainMarketArea";
+import MajorIndices from "@/components/MajorIndices";
 import { IExtendedAsset } from "@/types/asset";
 
 export default function MarketPage() {
@@ -23,6 +24,9 @@ export default function MarketPage() {
     { symbol: string; price: number; change: string }[]
   >([]);
   const [topLosers, setTopLosers] = useState<
+    { symbol: string; price: number; change: string }[]
+  >([]);
+  const [majorIndices, setMajorIndices] = useState<
     { symbol: string; price: number; change: string }[]
   >([]);
   const [watchlist, setWatchlist] = useState<
@@ -75,7 +79,6 @@ export default function MarketPage() {
 
   useEffect(() => {
     if (status === "loading") return;
-
     if (status === "unauthenticated" || !session?.user?.id) {
       console.error("User is not authenticated or session user ID is missing", {
         status,
@@ -94,18 +97,24 @@ export default function MarketPage() {
 
   useEffect(() => {
     if (status === "loading") return;
-
     if (status === "unauthenticated" || !session?.user?.id) return;
 
     const fetchMarketData = async () => {
       try {
-        const response = await fetch("/api/market/top", {
-          credentials: "include",
-        });
-        if (!response.ok) console.error("Failed to fetch market data");
-        const { topGainers, topLosers } = await response.json();
+        const [topResponse, indicesResponse] = await Promise.all([
+          fetch("/api/market/top", { credentials: "include" }),
+          fetch("/api/market/indices", { credentials: "include" }),
+        ]);
+
+        if (!topResponse.ok) console.error("Failed to fetch top movers");
+        if (!indicesResponse.ok) console.error("Failed to fetch major indices");
+
+        const { topGainers, topLosers } = await topResponse.json();
+        const { indices } = await indicesResponse.json();
+
         setTopGainers(topGainers || []);
         setTopLosers(topLosers || []);
+        setMajorIndices(indices || []);
         setMarketDataError(null);
       } catch (error) {
         console.error("Error in fetchMarketData:", error);
@@ -148,13 +157,12 @@ export default function MarketPage() {
             console.error("Failed to remove from watchlist");
           }
         }
-        // Trigger refetch in Watchlist component
         if (watchlistRef.current) {
           await watchlistRef.current.refetch();
         }
       } catch (error) {
         console.error("Error toggling watchlist:", error);
-        throw error; // Propagate error to WatchlistButton
+        throw error;
       }
     },
     [],
@@ -184,12 +192,7 @@ export default function MarketPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-[2vh]">
           <div className="col-span-1">
-            <div className="bg-true-black text-white rounded-lg p-4 h-full">
-              <h2 className="text-lg font-semibold mb-2">
-                Market Overview (Major Indices)
-              </h2>
-              <p>Thonk</p>
-            </div>
+            <MajorIndices majorIndices={majorIndices} />
           </div>
 
           <div className="col-span-1 lg:col-span-3 row-span-2">

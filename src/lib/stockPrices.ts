@@ -237,9 +237,6 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
     const currentPrice = quote.regularMarketPrice ?? 0;
 
     if (currentPrice > 0) {
-      console.log(
-        `Price for ${symbol} fetched from Yahoo Finance: ${currentPrice}`,
-      );
       return currentPrice;
     }
     console.log(`Yahoo Finance returned no valid price for ${symbol}`);
@@ -299,7 +296,7 @@ export async function getTodayPriceBySymbol(symbol: string): Promise<number> {
 export async function getClosestPreviousPrice(
   symbol: string,
   currentDate: string,
-  request?: Request, // Add Request parameter
+  request?: Request,
   lastKnownPriceMap?: Record<string, { open: number; close: number }>,
 ): Promise<number> {
   if (lastKnownPriceMap) {

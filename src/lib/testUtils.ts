@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { getServerSession } from "next-auth";
+import bcrypt from "bcryptjs";
 import type { Session } from "next-auth";
 
 let mongo: MongoMemoryServer;
@@ -41,17 +42,47 @@ export function getMockSession(
   };
 }
 
-export function createMockRequestWithJson(body: any): Request {
+export function createMockRequestWithJson(
+  body: any,
+  method: string = "POST",
+): Request {
   return new Request("http://localhost", {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-export function createMockRequestWithUrl(path: string): Request {
+export function createMockRequestWithUrl(
+  path: string,
+  method: string = "GET",
+): Request {
   return new Request(`http://localhost${path}`, {
-    method: "GET",
+    method,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+export async function createUserInDB(
+  overrides: Partial<Record<string, any>> = {},
+) {
+  const User = (await import("@/models/User")).default;
+  const hashedPassword = await bcrypt.hash("password123", 10);
+  const user = new User({
+    email: "test@example.com",
+    password: hashedPassword,
+    first_name: "Test",
+    last_name: "User",
+    preferences: { currency: "USD" },
+    ...overrides,
+  });
+  await user.save();
+  return user;
+}
+
+export async function clearDatabase() {
+  const collections = mongoose.connection.collections;
+  for (const key in collections) {
+    await collections[key].deleteMany({});
+  }
 }

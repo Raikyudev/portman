@@ -179,7 +179,7 @@ export default function MainMarketArea({
           </div>
 
           {loading && <div className="text-center py-4">Loading assets...</div>}
-          {!loading && assets.length === 0 && (
+          {!loading && formattedPrices.length === 0 && assets.length === 0 && (
             <div className="text-center py-4">No assets found.</div>
           )}
           {!loading && assets.length > 0 && (
