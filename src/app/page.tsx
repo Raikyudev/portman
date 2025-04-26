@@ -14,9 +14,7 @@ export default function Home() {
 
   return (
       <div className="">
-        {/* Hero Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 w-full h-[calc(100vh-70px)] bg-true-black bg-[url('/homepage1.png')] bg-no-repeat bg-[length:100%_auto] sm:bg-[length:60%_auto] bg-center sm:bg-left relative">
-          {/* Left Column: Branding */}
           <div className="flex flex-col justify-center items-center col-span-1 gap-4 p-4 sm:p-10">
             <div className="text-3xl sm:text-5xl text-white">Portman</div>
             <div className="flex flex-col justify-center items-center mb-4 text-white text-sm sm:text-base">
@@ -25,14 +23,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Column: Call to Action */}
           <div className="flex flex-col col-span-1 bg-true-black rounded-bl-[60px] justify-center items-center p-4 sm:p-10">
             <div className="flex flex-col gap-4 w-full sm:w-3/4 md:w-1/2 text-left">
               <div className="text-2xl sm:text-4xl">
                 <span className="text-red">Portman.</span> A new approach to investing.
               </div>
               <div className="text-sm sm:text-lg">
-                We believe investing should be a clear and straightforward experience. We build and manage diversified portfolios, using technology to keep charges low and clearly show where you’re invested.
+                Investing should be transparent and simple. We help you build and manage your portfolio with clear insights, no fees, and real-time tracking of your investments.
               </div>
             </div>
             <div className="mt-4 sm:mt-8 flex justify-center w-full">
@@ -75,7 +72,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Message Box */}
           <div
               className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-red font-bold p-2 sm:p-4 mb-4 sm:mb-6 text-center w-fit rounded-full text-xs sm:text-base"
               style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
@@ -84,60 +80,56 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Additional Content */}
         <div className="flex flex-col items-center">
-          {/* Why Choose Portman */}
           <div className="text-base sm:text-lg text-red font-bold p-4 mt-4 sm:mt-6">
             Why choose Portman?
           </div>
           <div className="p-4 w-full sm:w-4/5 md:w-3/5 text-sm sm:text-base">
-            We were the first and we’re now the largest digital wealth manager in the UK with 200k clients. We don’t hide behind complex pricing structures or financial jargon. We don’t keep you in the dark when it comes to your investments or how they’re performing. Instead, we give you complete transparency, and want you to feel empowered.
+            Portman is a digital wealth management tool that puts transparency and simplicity at the heart of investing - without hidden fees or confusing jargon. The platform offers clear insights, real-time performance tracking, and AI-driven reports to help you make informed decisions with confidence. Whether you're building your first portfolio or optimising your investments, Portman helps you take control of your financial future.
           </div>
 
-          {/* Features Section */}
           <div className="text-base sm:text-lg text-red font-bold p-4 mt-4 sm:mt-6">
             How Portman Helps you invest
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full sm:w-4/5 md:w-2/3 px-4">
             <Card className="bg-true-black hover:bg-red">
               <CardHeader>
-                <CardTitle>SOME FEATURE</CardTitle>
+                <CardTitle>Automated Portfolio Tracking</CardTitle>
               </CardHeader>
-              <CardContent className="h-auto">DESCRIPTION</CardContent>
+              <CardContent className="h-auto">Track your investments in real-time with automatic updates and insights.</CardContent>
             </Card>
             <Card className="bg-true-black hover:bg-red">
               <CardHeader>
-                <CardTitle>SOME FEATURE</CardTitle>
+                <CardTitle>Historical Performance Analysis</CardTitle>
               </CardHeader>
-              <CardContent className="h-auto">DESCRIPTION</CardContent>
+              <CardContent className="h-auto">Review how your portfolio has grown or changed over time.</CardContent>
             </Card>
             <Card className="bg-true-black hover:bg-red">
               <CardHeader>
-                <CardTitle>SOME FEATURE</CardTitle>
+                <CardTitle>Customizable Watchlists</CardTitle>
               </CardHeader>
-              <CardContent className="h-auto">DESCRIPTION</CardContent>
+              <CardContent className="h-auto">Monitor assets you’re interested in and receive updates on price changes.</CardContent>
             </Card>
             <Card className="bg-true-black hover:bg-red">
               <CardHeader>
-                <CardTitle>SOME FEATURE</CardTitle>
+                <CardTitle>Downloadable Reports</CardTitle>
               </CardHeader>
-              <CardContent className="h-auto">DESCRIPTION</CardContent>
+              <CardContent className="h-auto">Export your portfolio summaries and insights whenever you need.</CardContent>
             </Card>
             <Card className="bg-true-black hover:bg-red">
               <CardHeader>
-                <CardTitle>SOME FEATURE</CardTitle>
+                <CardTitle>Multi-Portfolio Support</CardTitle>
               </CardHeader>
-              <CardContent className="h-auto">DESCRIPTION</CardContent>
+              <CardContent className="h-auto">Manage multiple portfolios separately, great for different goals.</CardContent>
             </Card>
             <Card className="bg-true-black hover:bg-red">
               <CardHeader>
-                <CardTitle>SOME FEATURE</CardTitle>
+                <CardTitle>AI-Driven Recommendations</CardTitle>
               </CardHeader>
-              <CardContent className="h-auto">DESCRIPTION</CardContent>
+              <CardContent className="h-auto">Get tailored insights and suggestions powered by AI.</CardContent>
             </Card>
           </div>
 
-          {/* Steps Section */}
           <div className="text-base sm:text-lg text-red font-bold p-4 mt-4 sm:mt-6">
             3 Easy steps to get you started
           </div>
@@ -147,11 +139,11 @@ export default function Home() {
                 <CardTitle className="text-base sm:text-lg">Step 1</CardTitle>
               </CardHeader>
               <CardContent className="h-auto">
-                Log in or create a new account
+                Log in or create a new account.
                 <p><br /></p>
-                <div className="relative w-full h-0 pb-[66.67%] mt-2">
+                <div className="relative w-full h-[450px]">
                   <Image
-                      src="/homepage1.png"
+                      src="/step1.png"
                       alt="Description of image"
                       fill
                       className="object-contain"
@@ -164,10 +156,10 @@ export default function Home() {
                 <CardTitle className="text-base sm:text-lg">Step 2</CardTitle>
               </CardHeader>
               <CardContent className="h-auto">
-                Create your first portfolio and add your transactions
-                <div className="relative w-full h-0 pb-[66.67%] mt-2">
+                Create your first portfolio and add your transactions.
+                <div className="relative w-full h-[450px]">
                   <Image
-                      src="/homepage1.png"
+                      src="/step2.png"
                       alt="Description of image"
                       fill
                       className="object-contain"
@@ -180,10 +172,10 @@ export default function Home() {
                 <CardTitle className="text-base sm:text-lg">Step 3</CardTitle>
               </CardHeader>
               <CardContent className="h-auto">
-                Explore your insights and see how your portfolio is performing
-                <div className="relative w-full h-0 pb-[66.67%] mt-2">
+                Explore your insights and see how your portfolio is performing.
+                <div className="relative w-full h-[450px]">
                   <Image
-                      src="/homepage1.png"
+                      src="/step3.png"
                       alt="Description of image"
                       fill
                       className="object-contain"

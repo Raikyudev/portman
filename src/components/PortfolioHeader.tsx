@@ -54,7 +54,7 @@ export default function PortfolioHeader({
   }
 
   return (
-    <div className="flex items-stretch mb-4 space-x-2 rounded-xl">
+    <div className="flex items-stretch space-x-2 rounded-xl">
       <div className="flex items-center bg-true-black px-10 rounded-xl w-full">
         <Card className="flex-grow rounded no-border text-2xl font-bold bg-true-black">
           <span>{session?.data?.user?.first_name || "User"}'s Portfolio</span>

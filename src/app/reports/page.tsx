@@ -144,8 +144,8 @@ export default function Page() {
 
   return (
     <ProtectedLayout>
-      <div className="flex flex-col container mx-auto gap-4">
-        <div className="flex justify-between items-center mb-4 space-x-4 bg-true-black p-4 rounded-lg">
+      <div className="flex flex-col container mx-auto gap-2">
+        <div className="flex justify-between items-center bg-true-black p-4 rounded-lg">
           <h1 className="text-2xl font-bold">User's Reports</h1>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
@@ -272,7 +272,7 @@ export default function Page() {
           <div className="mt-6 mb-4 flex justify-center">
             <Button
               asChild
-              className="bg-red text-white font-semibold py-3 px-6 rounded-lg"
+              className="bg-red text-white hover:bg-white hover:text-true-black font-semibold py-3 px-6 rounded-lg"
             >
               <Link href="/reports/generate">Generate a Report</Link>
             </Button>

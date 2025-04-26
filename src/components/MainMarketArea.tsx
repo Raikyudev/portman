@@ -23,6 +23,10 @@ import { useState, useEffect } from "react";
 import AssetDetails from "@/components/AssetDetails";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { batchConvertAndFormatCurrency } from "@/lib/currencyUtils";
+import WhiteFilledStar from "../../public/white-filled-star.svg";
+import Image from "next/image";
+
+
 
 interface MainMarketAreaProps {
   assets: IExtendedAsset[];
@@ -164,6 +168,16 @@ export default function MainMarketArea({
             <div className="flex flex-col sm:flex-row justify-center lg:justify-end gap-4 p-4 w-full lg:w-auto">
               <div className="bg-black p-4 text-gray text-sm rounded-lg font-semibold">
                 Choose an asset to see more details
+              </div>
+              <div className="flex items-center gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
+                <Image
+                    src={WhiteFilledStar}
+                    alt="White star icon"
+                    width={18}
+                    height={18}
+                    className="w-5 h-5"
+                />{" "}
+                to add to the watchlist
               </div>
             </div>
 

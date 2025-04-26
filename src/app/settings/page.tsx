@@ -78,20 +78,23 @@ export default function SettingsPage() {
   if (status === "loading") return <div>Loading...</div>;
   return (
     <ProtectedLayout>
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="container mx-auto p-4 ">
+        <div className="bg-true-black rounded-lg p-4 mb-2">
+          <h1 className="text-2xl font-bold">Settings</h1>
+        </div>
+
         <Tabs
           defaultValue="account"
           className="grid grid-cols-1 md:grid-cols-6 gap-6"
         >
           <TabsList className="flex flex-col h-fit space-y-2 bg-true-black p-4 rounded-lg md:col-span-1">
             <TabsTrigger value="account" asChild>
-              <Button variant="ghost" className="w-full justify-start">
+              <Button variant="ghost" className="w-full justify-start hover:bg-red">
                 Account
               </Button>
             </TabsTrigger>
             <TabsTrigger value="portfolio" asChild>
-              <Button variant="ghost" className="w-full justify-start">
+              <Button variant="ghost" className="w-full justify-start hover:bg-red">
                 Portfolio
               </Button>
             </TabsTrigger>
@@ -106,15 +109,15 @@ export default function SettingsPage() {
                 <CardContent>
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between hover:bg-black p-2 rounded-lg">
                         <span className="font-medium">First Name:</span>
                         <span>{session?.user?.first_name || "N/A"}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between hover:bg-black p-2 rounded-lg">
                         <span className="font-medium">Last Name:</span>
                         <span>{session?.user?.last_name || "N/A"}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between hover:bg-black p-2 rounded-lg">
                         <span className="font-medium">Email Address:</span>
                         <span>{session?.user?.email || "N/A"}</span>
                       </div>

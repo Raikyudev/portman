@@ -269,6 +269,7 @@ export default function Page() {
                                                         setSelectedAsset(asset);
                                                         setSearchResults([]);
                                                         setValue("asset_id", asset._id);
+                                                        setNotFound(false);
                                                     }}
                                                     className="p-2 hover:bg-gray-800 cursor-pointer"
                                                 >

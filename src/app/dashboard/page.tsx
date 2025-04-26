@@ -60,7 +60,7 @@ export default function DashboardPage() {
   return (
     <ProtectedLayout>
       <div className="container mx-auto p-4 no-border">
-        <h1 className="text-2xl font-bold mb-4">
+        <h1 className="text-2xl font-bold bg-true-black rounded-lg p-4 mb-2">
           Hi, {session?.user?.first_name || "User"}
         </h1>
         {error && <div className="text-red-500 mb-4">{error}</div>}

@@ -163,9 +163,7 @@ export default function Page() {
     <ProtectedLayout>
       {portfolios.length > 0 ? (
         <div className="container mx-auto p-4 text-white bg-gray-900 min-h-screen flex flex-col items-center justify-center">
-          {/* Entire content centered vertically */}
           <div className="w-full">
-            {/* Header section */}
             <div className="flex items-center justify-between">
               <PortfolioHeader
                 selectedPortfolioName={
@@ -186,7 +184,6 @@ export default function Page() {
                 <AddTransactionButton isEnabled={false} />
               )}
             </div>
-            {/* Main content */}
             <Tabs
               value={expandedPortfolio || portfolios[0]?._id.toString()}
               onValueChange={setExpandedPortfolio}

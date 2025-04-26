@@ -4,10 +4,8 @@ import LoginForm from "@/components/LoginForm";
 
 export default function Page() {
   return (
-      <div className="relative w-screen bg-[url('/money-bg.png')] bg-no-repeat bg-cover bg-center">
-          <div className="absolute inset-0 bg-red/60"></div>
-
-          <div className="relative flex items-center justify-center min-h-screen">
+      <div className="relative w-screen h-[calc(100vh-70px)] bg-[url('/login-bg.png')] bg-no-repeat bg-cover bg-center">
+          <div className="relative flex items-center justify-center h-full">
               <LoginForm />
           </div>
       </div>
