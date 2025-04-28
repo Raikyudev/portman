@@ -175,6 +175,7 @@ export default function MainMarketArea({
                 Choose an asset to see more details
               </div>
               <div className="flex items-center gap-4 text-gray bg-black p-3 text-sm rounded-lg font-semibold">
+                {/*Source: https://www.figma.com/design/T39HStFnJfPqS8sAqDDULd/Venus---Design-System-2021--Free-Version---Community-?node-id=431-1349&p=f&t=MO2U7sTllRmIikXD-0*/}
                 <Image
                   src={WhiteFilledStar}
                   alt="White star icon"

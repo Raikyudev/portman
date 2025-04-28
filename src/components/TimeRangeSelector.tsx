@@ -24,6 +24,7 @@ export default function TimeRangeSelector({
   return (
     <div className="flex justify-center space-x-2 mb-4 bg-black w-max rounded">
       <div className="flex justify-center my-1 ml-2">
+        {/*Source: https://www.figma.com/design/CQZgCdkJvLb5syWWazQXeJ/Venus---Dashboard-Builder-2021--Free-Version---Community-?node-id=102-1556&p=f&t=pSNWVaYjOLwZZvZ5-0*/}
         <Image
           src={WhiteCalendar}
           alt="Calendar Icon"

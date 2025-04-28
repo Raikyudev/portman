@@ -142,6 +142,7 @@ export default function AssetDetails({
             className="text-white hover:bg-gray-800"
             aria-label="Close Asset Details"
           >
+            {/*Source: https://www.figma.com/design/CQZgCdkJvLb5syWWazQXeJ/Venus---Dashboard-Builder-2021--Free-Version---Community-?node-id=102-1556&p=f&t=pSNWVaYjOLwZZvZ5-0*/}
             <Image
               src="/white-arrow.svg"
               alt="Back Arrow"

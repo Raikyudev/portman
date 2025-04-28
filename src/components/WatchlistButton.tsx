@@ -54,6 +54,7 @@ export default function WatchlistButton({
             }
             className="hover:bg-gray-100 rounded-full"
           >
+              {/*Source: https://www.figma.com/design/T39HStFnJfPqS8sAqDDULd/Venus---Design-System-2021--Free-Version---Community-?node-id=431-1349&p=f&t=MO2U7sTllRmIikXD-0*/}
             <Image
               src={`/white-${isInWatchlist ? "filled" : "empty"}-star.svg`}
               alt={isInWatchlist ? "Filled star" : "Empty star"}

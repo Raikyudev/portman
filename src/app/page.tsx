@@ -18,6 +18,7 @@ export default function Home() {
 
   return (
     <div className="">
+      {/*Source: https://www.canva.com/*/}
       <div className="grid grid-cols-1 sm:grid-cols-2 w-full h-[calc(100vh-70px)] bg-true-black bg-[url('/homepage1.png')] bg-no-repeat bg-[length:100%_auto] sm:bg-[length:60%_auto] bg-center sm:bg-left relative">
         <div className="flex flex-col justify-center items-center col-span-1 gap-4 p-4 sm:p-10">
           <div className="text-3xl sm:text-5xl text-white">Portman</div>
@@ -171,6 +172,7 @@ export default function Home() {
                 <br />
               </p>
               <div className="relative w-full h-[450px]">
+                {/*Source: https://www.canva.com/*/}
                 <Image
                   src="/step1.png"
                   alt="Description of image"
@@ -187,6 +189,7 @@ export default function Home() {
             <CardContent className="h-auto">
               Create your first portfolio and add your transactions.
               <div className="relative w-full h-[450px]">
+                {/*Source: https://www.canva.com/*/}
                 <Image
                   src="/step2.png"
                   alt="Description of image"
@@ -203,6 +206,7 @@ export default function Home() {
             <CardContent className="h-auto">
               Explore your insights and see how your portfolio is performing.
               <div className="relative w-full h-[450px]">
+                {/*Source: https://www.canva.com/*/}
                 <Image
                   src="/step3.png"
                   alt="Description of image"

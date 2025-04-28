@@ -187,6 +187,7 @@ export default function AssetPriceChart({
               className="focus:outline-none"
               aria-label="Close chart"
             >
+              {/*Source: https://www.figma.com/design/0UjbVdf6HdxAohpgdKcoKJ/Form-Builder-Components--Community-?node-id=403-96&p=f&t=20XQ3P2MYYKjdsgV-0*/}
               <Image
                 src="/white-cross.svg"
                 alt="Close"
